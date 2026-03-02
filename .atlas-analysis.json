@@ -1,0 +1,222 @@
+{
+  "projectType": "data-platform",
+  "projectName": "Airweave",
+  "projectDescription": "Open-source context retrieval layer for AI agents and RAG systems",
+  "theme": "sequoia",
+  "primaryColor": "#4199D3",
+  "lightColor": "#FAFCFE",
+  "darkColor": "#060606",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "concepts"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "collections",
+              "search",
+              "webhooks"
+            ]
+          },
+          {
+            "group": "Data Sources",
+            "pages": [
+              "connectors/overview",
+              "sources",
+              "source-connections",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "sdks",
+              "mcp-server",
+              "framework-integrations"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "deployment/overview",
+              "deployment/docker-compose",
+              "deployment/kubernetes",
+              "deployment/configuration"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "embeddings",
+              "chunking",
+              "transformers",
+              "rate-limits"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/overview",
+              "contributing/add-connector",
+              "contributing/architecture"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api-reference/authentication"
+            ]
+          },
+          {
+            "group": "Collections",
+            "pages": [
+              "api-reference/collections/list",
+              "api-reference/collections/get",
+              "api-reference/collections/create",
+              "api-reference/collections/update",
+              "api-reference/collections/delete",
+              "api-reference/collections/search"
+            ]
+          },
+          {
+            "group": "Source Connections",
+            "pages": [
+              "api-reference/source-connections/list",
+              "api-reference/source-connections/get",
+              "api-reference/source-connections/create",
+              "api-reference/source-connections/update",
+              "api-reference/source-connections/delete",
+              "api-reference/source-connections/run",
+              "api-reference/source-connections/jobs"
+            ]
+          },
+          {
+            "group": "Sources",
+            "pages": [
+              "api-reference/sources/list",
+              "api-reference/sources/get"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/subscriptions",
+              "api-reference/webhooks/messages"
+            ]
+          },
+          {
+            "group": "Entities",
+            "pages": [
+              "api-reference/entities/list",
+              "api-reference/entities/get"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Connectors",
+        "groups": [
+          {
+            "group": "Productivity",
+            "pages": [
+              "connectors/notion",
+              "connectors/slack",
+              "connectors/confluence",
+              "connectors/asana",
+              "connectors/jira",
+              "connectors/linear",
+              "connectors/clickup",
+              "connectors/trello",
+              "connectors/todoist"
+            ]
+          },
+          {
+            "group": "Cloud Storage",
+            "pages": [
+              "connectors/google-drive",
+              "connectors/google-docs",
+              "connectors/dropbox",
+              "connectors/onedrive",
+              "connectors/sharepoint",
+              "connectors/box"
+            ]
+          },
+          {
+            "group": "Developer Tools",
+            "pages": [
+              "connectors/github",
+              "connectors/gitlab",
+              "connectors/bitbucket"
+            ]
+          },
+          {
+            "group": "CRM & Sales",
+            "pages": [
+              "connectors/salesforce",
+              "connectors/hubspot",
+              "connectors/pipedrive",
+              "connectors/attio",
+              "connectors/stripe"
+            ]
+          },
+          {
+            "group": "Communication",
+            "pages": [
+              "connectors/gmail",
+              "connectors/google-calendar",
+              "connectors/outlook-mail",
+              "connectors/outlook-calendar"
+            ]
+          },
+          {
+            "group": "Support & Tickets",
+            "pages": [
+              "connectors/zendesk",
+              "connectors/freshdesk",
+              "connectors/servicenow"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Unified search across 50+ data sources",
+    "Real-time data synchronization",
+    "Vector and hybrid search",
+    "Python and TypeScript SDKs",
+    "MCP server for AI agent integration",
+    "Self-hosted and cloud deployment",
+    "Webhook support for real-time updates",
+    "Customizable chunking and embeddings"
+  ],
+  "publicApiSurface": [
+    "GET /collections",
+    "POST /collections",
+    "GET /collections/{readable_id}/search",
+    "POST /collections/{readable_id}/search",
+    "GET /source-connections",
+    "POST /source-connections",
+    "POST /source-connections/{id}/run",
+    "GET /sources",
+    "GET /webhooks/subscriptions",
+    "POST /webhooks/subscriptions",
+    "AirweaveSDK (Python)",
+    "@airweave/sdk (TypeScript)",
+    "airweave-mcp-search (MCP Server)"
+  ]
+}
