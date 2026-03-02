@@ -1,0 +1,289 @@
+---
+title: 'Sources'
+description: 'Understand data sources and how they connect to Airweave'
+---
+
+Sources represent the types of external systems that Airweave can connect to for data extraction. Each source defines the authentication methods, configuration options, and sync capabilities for a specific platform.
+
+## What is a Source?
+
+A **source** is a connector type - it's the blueprint for how Airweave communicates with a specific external platform. Think of it as the "driver" for a data source.
+
+For example:
+- `github` is a source that knows how to sync repositories, code files, and directories
+- `notion` is a source that knows how to sync workspaces, databases, and pages
+- `slack` is a source that knows how to search messages and channels
+
+Sources are **not** individual connections. When you want to sync data from your GitHub account, you create a **source connection** using the `github` source.
+
+## Source vs Source Connection
+
+| Concept | Description | Example |
+|---------|-------------|----------|
+| **Source** | A connector type/template | `github`, `notion`, `slack` |
+| **Source Connection** | An authenticated instance using a source | "My Docs Repo" (GitHub connection) |
+
+One source can power many source connections:
+- The `github` source can connect to multiple repositories
+- The `notion` source can connect to different workspaces
+- Each connection has its own credentials and configuration
+
+## Discovering Available Sources
+
+List all available sources to see what connectors Airweave supports:
+
+<CodeGroup>
+```bash cURL
+curl https://api.airweave.ai/v1/sources \
+  -H "Authorization: Bearer $AIRWEAVE_API_KEY"
+```
+
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+sources = client.sources.list()
+
+for source in sources:
+    print(f"{source.name} ({source.short_name})")
+    print(f"  Auth methods: {source.auth_methods}")
+    print(f"  Continuous sync: {source.supports_continuous}")
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+const sources = await client.sources.list();
+
+sources.forEach(source => {
+  console.log(`${source.name} (${source.short_name})`);
+  console.log(`  Auth methods: ${source.authMethods}`);
+  console.log(`  Continuous sync: ${source.supportsContinuous}`);
+});
+```
+</CodeGroup>
+
+## Source Properties
+
+Each source includes detailed metadata about its capabilities:
+
+### Identity
+- **name**: Human-readable name (e.g., "GitHub", "Slack")
+- **short_name**: Technical identifier (e.g., "github", "slack")
+- **description**: What data this source extracts
+
+### Authentication
+- **auth_methods**: Supported authentication methods
+  - `direct`: API keys or credentials
+  - `oauth_browser`: Browser-based OAuth flow
+  - `oauth_token`: Pre-obtained OAuth token
+  - `auth_provider`: Third-party auth provider
+- **oauth_type**: OAuth token type for OAuth sources
+  - `access_only`: Access token without refresh
+  - `with_refresh`: Access + refresh token
+  - `with_rotating_refresh`: Refresh token rotates on use
+  - `oauth1`: OAuth 1.0a flow
+- **requires_byoc**: Whether OAuth requires bringing your own client credentials
+
+### Configuration
+- **auth_config_class**: Python class defining required auth fields (for direct auth)
+- **config_class**: Python class defining source-specific config options
+- **auth_fields**: Schema of authentication credentials required
+- **config_fields**: Schema of configuration parameters available
+
+### Capabilities
+- **supports_continuous**: Whether cursor-based incremental sync is supported
+- **federated_search**: Whether source uses real-time search instead of syncing
+- **supports_temporal_relevance**: Whether entities have timestamps for recency ranking
+- **supports_access_control**: Whether document-level ACLs are extracted
+- **rate_limit_level**: Rate limiting scope (`org`, `connection`, or `null`)
+
+### Discovery
+- **labels**: Category tags (e.g., ["Code"], ["Knowledge Base", "Productivity"])
+- **output_entity_definitions**: Types of entities this source produces
+
+## Getting Source Details
+
+Retrieve detailed configuration for a specific source:
+
+<CodeGroup>
+```bash cURL
+curl https://api.airweave.ai/v1/sources/github \
+  -H "Authorization: Bearer $AIRWEAVE_API_KEY"
+```
+
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+source = client.sources.get("github")
+
+print(f"Source: {source.name}")
+print(f"Auth methods: {source.auth_methods}")
+print(f"\nAuth fields required:")
+for field_name, field_info in source.auth_fields.items():
+    print(f"  {field_name}: {field_info['type']}")
+
+print(f"\nConfig fields available:")
+for field_name, field_info in source.config_fields.items():
+    required = " (required)" if field_info.get('required') else ""
+    print(f"  {field_name}: {field_info['type']}{required}")
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+const source = await client.sources.get('github');
+
+console.log(`Source: ${source.name}`);
+console.log(`Auth methods: ${source.authMethods}`);
+
+console.log('\nAuth fields required:');
+Object.entries(source.authFields).forEach(([name, info]) => {
+  console.log(`  ${name}: ${info.type}`);
+});
+
+console.log('\nConfig fields available:');
+Object.entries(source.configFields).forEach(([name, info]) => {
+  const required = info.required ? ' (required)' : '';
+  console.log(`  ${name}: ${info.type}${required}`);
+});
+```
+</CodeGroup>
+
+## Example: GitHub Source
+
+Here's what the GitHub source looks like:
+
+```json
+{
+  "short_name": "github",
+  "name": "GitHub",
+  "description": "Connects to your GitHub repositories. Syncs repository metadata, directory structures, and code files.",
+  "auth_methods": ["direct", "auth_provider"],
+  "oauth_type": null,
+  "requires_byoc": false,
+  "auth_config_class": "GitHubAuthConfig",
+  "config_class": "GitHubConfig",
+  "labels": ["Code"],
+  "supports_continuous": true,
+  "supports_temporal_relevance": false,
+  "supports_access_control": false,
+  "federated_search": false,
+  "rate_limit_level": "org",
+  "auth_fields": {
+    "personal_access_token": {
+      "type": "string",
+      "description": "GitHub Personal Access Token with repo scope",
+      "required": true
+    }
+  },
+  "config_fields": {
+    "repo_name": {
+      "type": "string",
+      "description": "Repository name in owner/repo format",
+      "required": true
+    },
+    "branch": {
+      "type": "string",
+      "description": "Branch to sync (defaults to default branch)",
+      "required": false
+    },
+    "max_file_size": {
+      "type": "integer",
+      "description": "Maximum file size in bytes",
+      "required": false,
+      "default": 10485760
+    }
+  }
+}
+```
+
+## Source Implementation
+
+Each source is implemented as a Python class that extends `BaseSource` and is decorated with `@source`:
+
+```python
+from airweave.platform.decorators import source
+from airweave.platform.sources._base import BaseSource
+from airweave.schemas.source_connection import AuthenticationMethod
+
+@source(
+    name="GitHub",
+    short_name="github",
+    auth_methods=[AuthenticationMethod.DIRECT, AuthenticationMethod.AUTH_PROVIDER],
+    oauth_type=None,
+    auth_config_class=GitHubAuthConfig,
+    config_class=GitHubConfig,
+    labels=["Code"],
+    supports_continuous=True,
+    supports_temporal_relevance=False,
+    cursor_class=GitHubCursor,
+    rate_limit_level=RateLimitLevel.ORG,
+)
+class GitHubSource(BaseSource):
+    """GitHub source connector."""
+    
+    @classmethod
+    async def create(cls, credentials: GitHubAuthConfig, config: Optional[Dict] = None):
+        instance = cls()
+        instance.personal_access_token = credentials.personal_access_token
+        instance.repo_name = config["repo_name"]
+        instance.branch = config.get("branch")
+        return instance
+    
+    async def generate_entities(self) -> AsyncGenerator[BaseEntity, None]:
+        # Traverse repository and yield entities
+        async for entity in self._traverse_repository(...):
+            yield entity
+    
+    async def validate(self) -> bool:
+        # Verify credentials work
+        return await self._validate_credentials()
+```
+
+The `@source` decorator automatically registers the source with Airweave and makes it discoverable via the API.
+
+## Using Sources
+
+Sources define what's possible - source connections make it happen:
+
+<Steps>
+  <Step title="Discover Sources">
+    Browse available sources to find the right connector for your data
+  </Step>
+  
+  <Step title="Review Requirements">
+    Check what authentication and configuration the source needs
+  </Step>
+  
+  <Step title="Create Connection">
+    Create a source connection with credentials and config
+  </Step>
+  
+  <Step title="Sync Data">
+    Run the connection to extract data into your collection
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browse Connectors" icon="grid" href="/connectors/overview">
+    Explore all 50+ available connectors
+  </Card>
+  
+  <Card title="Create Connections" icon="plug" href="/source-connections">
+    Learn how to connect sources to collections
+  </Card>
+  
+  <Card title="Authentication" icon="key" href="/authentication">
+    Understand authentication methods
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference/sources/list">
+    See the full API specification
+  </Card>
+</CardGroup>

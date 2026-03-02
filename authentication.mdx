@@ -1,0 +1,586 @@
+---
+title: 'Authentication'
+description: 'Understand authentication methods for connecting data sources'
+---
+
+Airweave supports multiple authentication methods for connecting to data sources, from simple API keys to OAuth flows and third-party auth providers.
+
+## Authentication Methods
+
+Different sources support different authentication methods. You can discover which methods a source supports by checking its `auth_methods` field.
+
+### Direct Authentication
+
+Provide credentials (API keys, tokens, passwords) directly when creating a source connection. This is the simplest method and creates the connection immediately.
+
+**Supported by**: GitHub, Salesforce, Stripe, MySQL, PostgreSQL, and others with API key or token-based auth.
+
+<CodeGroup>
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+connection = client.source_connections.create(
+    name="GitHub Docs",
+    short_name="github",
+    readable_collection_id="technical-docs-a8x2k",
+    config={"repo_name": "airweave-ai/airweave"},
+    auth={
+        "direct": {
+            "credentials": {
+                "personal_access_token": "ghp_abc123..."
+            }
+        }
+    }
+)
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+
+const connection = await client.sourceConnections.create({
+  name: 'GitHub Docs',
+  shortName: 'github',
+  readableCollectionId: 'technical-docs-a8x2k',
+  config: { repoName: 'airweave-ai/airweave' },
+  auth: {
+    direct: {
+      credentials: {
+        personalAccessToken: 'ghp_abc123...'
+      }
+    }
+  }
+});
+```
+</CodeGroup>
+
+**How it works:**
+1. Provide credentials directly in the create request
+2. Airweave encrypts and stores the credentials
+3. Connection is created and ready to sync immediately
+
+### OAuth Browser Flow
+
+Authenticate users via browser redirect. Airweave handles the OAuth flow and returns an `auth_url` for user authentication.
+
+**Supported by**: Notion, Slack, Google Drive, Microsoft, and most modern SaaS platforms.
+
+<Steps>
+  <Step title="Create Connection">
+    Create a source connection with OAuth browser auth. Airweave returns an `auth_url`.
+    
+    ```python
+    connection = client.source_connections.create(
+        name="My Notion Workspace",
+        short_name="notion",
+        readable_collection_id="team-wiki-x9k2m",
+        auth={
+            "oauth_browser": {
+                "redirect_uri": "https://myapp.com/oauth/callback"
+            }
+        },
+        sync_immediately=False
+    )
+    
+    print(f"Redirect user to: {connection.auth.auth_url}")
+    # Example: https://api.airweave.ai/v1/source-connections/authorize/abc123
+    ```
+  </Step>
+  
+  <Step title="User Authentication">
+    Redirect the user to the `auth_url`. Airweave redirects to the OAuth provider (e.g., Notion), where the user grants permissions.
+  </Step>
+  
+  <Step title="OAuth Callback">
+    After authentication, the user is redirected back to your `redirect_uri` with query parameters:
+    - `status=success`
+    - `source_connection_id={uuid}`
+    
+    ```
+    https://myapp.com/oauth/callback?status=success&source_connection_id=550e8400-e29b-41d4-a716-446655440000
+    ```
+  </Step>
+  
+  <Step title="Verify & Sync">
+    Check the connection status and trigger the initial sync:
+    
+    ```python
+    # In your OAuth callback handler
+    connection_id = request.query_params.get('source_connection_id')
+    
+    connection = client.source_connections.get(connection_id)
+    if connection.status == "active":
+        # OAuth completed successfully, trigger sync
+        job = client.source_connections.run(connection_id)
+    ```
+  </Step>
+</Steps>
+
+<Note>
+The OAuth callback endpoint at `/v1/source-connections/callback` handles the OAuth provider redirect automatically. You don't need to implement OAuth yourself - just redirect users to the `auth_url` and handle the final callback to your app.
+</Note>
+
+#### OAuth with BYOC (Bring Your Own Client)
+
+Some sources support or require BYOC (Bring Your Own Client) where you provide your own OAuth client credentials. This is common for enterprise sources.
+
+**OAuth 2.0 BYOC:**
+
+```python
+connection = client.source_connections.create(
+    name="Custom Salesforce",
+    short_name="salesforce",
+    readable_collection_id="crm-data-k3x9m",
+    auth={
+        "oauth_browser": {
+            "client_id": "your-client-id",
+            "client_secret": "your-client-secret",
+            "redirect_uri": "https://myapp.com/oauth/callback"
+        }
+    }
+)
+```
+
+**OAuth 1.0a BYOC** (for sources like Twitter):
+
+```python
+connection = client.source_connections.create(
+    name="Custom Twitter",
+    short_name="twitter",
+    readable_collection_id="social-media-m8x1k",
+    auth={
+        "oauth_browser": {
+            "consumer_key": "your-consumer-key",
+            "consumer_secret": "your-consumer-secret",
+            "redirect_uri": "https://myapp.com/oauth/callback"
+        }
+    }
+)
+```
+
+### OAuth Token
+
+Provide a pre-obtained OAuth access token if you've already authenticated the user through your own OAuth flow.
+
+**Supported by**: All OAuth-enabled sources.
+
+```python
+connection = client.source_connections.create(
+    name="My Slack Workspace",
+    short_name="slack",
+    readable_collection_id="team-messages-k3x9m",
+    auth={
+        "oauth_token": {
+            "access_token": "xoxb-1234567890-abcdef",
+            "refresh_token": "xoxe-1-...",  # Optional, for token refresh
+            "expires_at": "2026-12-31T23:59:59Z"  # Optional
+        }
+    }
+)
+```
+
+**When to use OAuth Token:**
+- You're already authenticating users with OAuth in your app
+- You want to reuse existing OAuth tokens
+- You need fine-grained control over the OAuth flow
+
+### Auth Provider
+
+Use a third-party authentication provider (Composio, Pipedream, Klavis) to handle OAuth and credential management.
+
+**Supported by**: All sources that support OAuth.
+
+<Steps>
+  <Step title="Create Auth Provider Connection">
+    First, create a connection to your auth provider:
+    
+    ```python
+    # List available auth providers
+    providers = client.auth_providers.list()
+    
+    # Create auth provider connection
+    auth_conn = client.auth_providers.create(
+        name="Composio Production",
+        short_name="composio",
+        auth_fields={
+            "api_key": "comp_api_..."
+        },
+        config={
+            "base_url": "https://backend.composio.dev/api/v1"
+        }
+    )
+    ```
+  </Step>
+  
+  <Step title="Create Source Connection with Provider">
+    Use the auth provider to authenticate your source connection:
+    
+    ```python
+    connection = client.source_connections.create(
+        name="Salesforce via Composio",
+        short_name="salesforce",
+        readable_collection_id="customer-data-m8x1k",
+        auth={
+            "auth_provider": {
+                "provider_readable_id": "composio-prod-x7k9m",
+                "provider_config": {
+                    "entity_id": "user-123"
+                }
+            }
+        }
+    )
+    ```
+  </Step>
+</Steps>
+
+**When to use Auth Providers:**
+- You need centralized credential management
+- You want to avoid implementing OAuth for each source
+- You're using Composio or Pipedream for auth in your stack
+- You need features like automatic token refresh across multiple integrations
+
+## OAuth Token Types
+
+Different sources use different OAuth token types:
+
+### Access Only
+
+Access token without refresh capability. Token typically has a long expiration (months to years).
+
+**Sources**: Notion, Linear, Coda
+
+```json
+{
+  "oauth_type": "access_only",
+  "access_token": "secret_abc123...",
+  "expires_at": null  // No expiration or very long-lived
+}
+```
+
+### With Refresh Token
+
+Access token expires, but can be refreshed using the refresh token.
+
+**Sources**: Google (Drive, Docs, Gmail), Microsoft (OneDrive, Outlook), Salesforce
+
+```json
+{
+  "oauth_type": "with_refresh",
+  "access_token": "ya29.a0...",
+  "refresh_token": "1//0c...",
+  "expires_at": "2026-03-02T12:00:00Z"
+}
+```
+
+Airweave automatically refreshes tokens before they expire.
+
+### With Rotating Refresh Token
+
+Refresh token is rotated (changes) each time it's used to get a new access token.
+
+**Sources**: Some OAuth 2.1 implementations
+
+```json
+{
+  "oauth_type": "with_rotating_refresh",
+  "access_token": "current_access_token",
+  "refresh_token": "current_refresh_token",
+  "expires_at": "2026-03-02T12:00:00Z"
+}
+```
+
+Airweave updates stored credentials when the refresh token rotates.
+
+### OAuth 1.0a
+
+OAuth 1.0a flow using consumer key/secret and token/token secret.
+
+**Sources**: Twitter (X)
+
+```json
+{
+  "oauth_type": "oauth1",
+  "oauth_token": "...",
+  "oauth_token_secret": "...",
+  "consumer_key": "...",
+  "consumer_secret": "..."
+}
+```
+
+## Authentication from Source Code
+
+Here's how authentication is implemented in a source connector:
+
+```python
+from airweave.platform.decorators import source
+from airweave.platform.sources._base import BaseSource
+from airweave.schemas.source_connection import AuthenticationMethod, OAuthType
+
+@source(
+    name="GitHub",
+    short_name="github",
+    auth_methods=[AuthenticationMethod.DIRECT, AuthenticationMethod.AUTH_PROVIDER],
+    oauth_type=None,  # Not an OAuth source
+    auth_config_class=GitHubAuthConfig,  # Defines required auth fields
+    config_class=GitHubConfig,
+)
+class GitHubSource(BaseSource):
+    @classmethod
+    async def create(cls, credentials: GitHubAuthConfig, config: Dict):
+        instance = cls()
+        instance.personal_access_token = credentials.personal_access_token
+        instance.repo_name = config["repo_name"]
+        return instance
+    
+    async def validate(self) -> bool:
+        # Verify credentials work
+        headers = {"Authorization": f"token {self.personal_access_token}"}
+        response = await client.get("https://api.github.com/user", headers=headers)
+        return response.status_code == 200
+```
+
+### Auth Config Classes
+
+Each source defines its authentication requirements using Pydantic models:
+
+```python
+from pydantic import BaseModel, Field
+
+class GitHubAuthConfig(BaseModel):
+    """GitHub authentication configuration."""
+    
+    personal_access_token: str = Field(
+        ...,
+        description="GitHub Personal Access Token with repo scope",
+        min_length=1
+    )
+```
+
+## Token Refresh
+
+For OAuth sources with refresh tokens, Airweave automatically handles token refresh:
+
+<Steps>
+  <Step title="Token Expiration Check">
+    Before each API request, Airweave checks if the access token has expired or is about to expire (within 5 minutes).
+  </Step>
+  
+  <Step title="Automatic Refresh">
+    If the token is expired or about to expire, Airweave uses the refresh token to obtain a new access token.
+  </Step>
+  
+  <Step title="Credential Update">
+    The new access token (and new refresh token if rotating) is encrypted and stored, replacing the old credentials.
+  </Step>
+  
+  <Step title="Request Retry">
+    The original API request is retried with the new access token.
+  </Step>
+</Steps>
+
+This happens transparently - you don't need to handle token refresh manually.
+
+## Auth Providers
+
+Auth providers are third-party services that manage OAuth flows and credentials for multiple integrations.
+
+### Available Auth Providers
+
+<CardGroup cols={3}>
+  <Card title="Composio" icon="puzzle-piece">
+    Enterprise auth provider with 100+ integrations
+  </Card>
+  
+  <Card title="Pipedream" icon="pipe">
+    Workflow automation with built-in auth
+  </Card>
+  
+  <Card title="Klavis" icon="key">
+    API key and credential management
+  </Card>
+</CardGroup>
+
+### Setting Up an Auth Provider
+
+<Steps>
+  <Step title="List Providers">
+    See which auth providers are available:
+    
+    ```python
+    providers = client.auth_providers.list()
+    for provider in providers:
+        print(f"{provider.name} - {provider.short_name}")
+        print(f"  Auth fields: {provider.auth_fields.keys()}")
+    ```
+  </Step>
+  
+  <Step title="Create Connection">
+    Create a connection to the auth provider:
+    
+    ```python
+    auth_conn = client.auth_providers.create(
+        name="Production Composio",
+        short_name="composio",
+        auth_fields={
+            "api_key": "comp_api_abc123..."
+        },
+        config={
+            "base_url": "https://backend.composio.dev/api/v1"
+        }
+    )
+    ```
+  </Step>
+  
+  <Step title="Use with Sources">
+    Reference the auth provider when creating source connections:
+    
+    ```python
+    connection = client.source_connections.create(
+        name="GitHub via Composio",
+        short_name="github",
+        readable_collection_id="code-docs-a8x2k",
+        auth={
+            "auth_provider": {
+                "provider_readable_id": auth_conn.readable_id,
+                "provider_config": {
+                    "entity_id": "user-123",
+                    "connected_account_id": "acc_abc"
+                }
+            }
+        }
+    )
+    ```
+  </Step>
+</Steps>
+
+### Composio Integration
+
+Composio provides unified authentication across 100+ integrations:
+
+```python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+# Create Composio auth provider connection
+composio = client.auth_providers.create(
+    name="Composio Production",
+    short_name="composio",
+    auth_fields={
+        "api_key": "comp_api_..."
+    }
+)
+
+# Use Composio for Salesforce authentication
+salesforce = client.source_connections.create(
+    name="Salesforce CRM",
+    short_name="salesforce",
+    readable_collection_id="customer-data-m8x1k",
+    auth={
+        "auth_provider": {
+            "provider_readable_id": composio.readable_id,
+            "provider_config": {
+                "entity_id": "user-123",  # Your user ID in Composio
+                "app_name": "salesforce"   # Composio app identifier
+            }
+        }
+    }
+)
+```
+
+### Pipedream Integration
+
+Pipedream provides workflow automation with built-in auth:
+
+```python
+# Create Pipedream auth provider connection
+pipedream = client.auth_providers.create(
+    name="Pipedream Production",
+    short_name="pipedream",
+    auth_fields={
+        "api_key": "pd_api_..."
+    }
+)
+
+# Use Pipedream for Google Drive authentication
+drive = client.source_connections.create(
+    name="Google Drive Files",
+    short_name="google_drive",
+    readable_collection_id="company-docs-k3x9m",
+    auth={
+        "auth_provider": {
+            "provider_readable_id": pipedream.readable_id,
+            "provider_config": {
+                "account_id": "acc_abc123"  # Pipedream account ID
+            }
+        }
+    }
+)
+```
+
+## Security Best Practices
+
+<Note>
+**Airweave encrypts all credentials at rest** using industry-standard encryption (AES-256-GCM). Credentials are only decrypted in memory when needed for API requests.
+</Note>
+
+### Credential Storage
+
+- All credentials are encrypted before storage
+- Encryption keys are managed separately from the database
+- OAuth tokens are encrypted with the same security as direct credentials
+
+### Token Refresh
+
+- Refresh tokens are stored encrypted
+- Token refresh happens server-side - clients never see refresh tokens
+- Failed refreshes trigger re-authentication flows
+
+### API Key Rotation
+
+When rotating API keys for direct auth:
+
+```python
+# Update credentials
+connection = client.source_connections.update(
+    source_connection_id="550e8400-e29b-41d4-a716-446655440000",
+    auth={
+        "direct": {
+            "credentials": {
+                "personal_access_token": "ghp_new_token_..."
+            }
+        }
+    }
+)
+```
+
+### Revoking Access
+
+To revoke Airweave's access to a source:
+
+1. Delete the source connection (removes credentials from Airweave)
+2. Revoke OAuth tokens in the source platform (e.g., GitHub Settings → Applications)
+3. For direct auth, rotate/delete the API key in the source platform
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Connections" icon="plug" href="/source-connections">
+    Start connecting your data sources
+  </Card>
+  
+  <Card title="Browse Connectors" icon="grid" href="/connectors/overview">
+    See all 50+ available connectors
+  </Card>
+  
+  <Card title="Auth Providers" icon="puzzle-piece" href="/api-reference/auth-providers/list">
+    View auth provider API reference
+  </Card>
+  
+  <Card title="Security" icon="shield" href="/security">
+    Learn about Airweave's security practices
+  </Card>
+</CardGroup>

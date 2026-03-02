@@ -1,0 +1,747 @@
+---
+title: Search
+description: Powerful semantic and hybrid search across your collections
+---
+
+Airweave provides AI-powered search capabilities that combine semantic understanding with keyword precision. Search across all your connected data sources through a unified interface with full control over the search pipeline.
+
+## Overview
+
+When you query a collection, Airweave runs a multi-step search pipeline:
+
+1. **Query expansion**: Generate variations to capture synonyms and related terms
+2. **Retrieval**: Use keyword, neural, or hybrid methods to fetch candidates
+3. **Filtering**: Apply structured metadata filters
+4. **Reranking**: AI-powered reordering for higher precision
+5. **Answer generation**: Return raw documents or synthesize a natural language response
+
+<Note>
+All search parameters have sensible defaults. You can start with a simple query and add complexity as needed.
+</Note>
+
+## Quick Start
+
+The simplest search requires only a query string:
+
+<CodeGroup>
+```python Python
+from airweave import AirweaveSDK
+
+client = AirweaveSDK(api_key="YOUR_API_KEY")
+
+# Basic search
+results = client.collections.search(
+    readable_id="customer-support-x7k9m",
+    query="How do I reset my password?"
+)
+
+# Access results
+for result in results.results:
+    print(f"Score: {result['score']:.3f}")
+    print(f"Source: {result['source_name']}")
+    print(f"Content: {result['md_content'][:200]}...")
+    print(f"URL: {result.get('url', 'N/A')}")
+    print("---")
+
+# Access AI-generated answer (if generate_answer was true)
+if results.completion:
+    print(f"Answer: {results.completion}")
+```
+
+```typescript TypeScript
+import { AirweaveSDKClient } from "@airweave/sdk";
+
+const client = new AirweaveSDKClient({ 
+  apiKey: "YOUR_API_KEY" 
+});
+
+// Basic search
+const results = await client.collections.search(
+  "customer-support-x7k9m",
+  {
+    query: "How do I reset my password?"
+  }
+);
+
+// Access results
+for (const result of results.results) {
+  console.log(`Score: ${result.score.toFixed(3)}`);
+  console.log(`Source: ${result.source_name}`);
+  console.log(`Content: ${result.md_content.slice(0, 200)}...`);
+  console.log(`URL: ${result.url || 'N/A'}`);
+  console.log("---");
+}
+
+// Access AI-generated answer
+if (results.completion) {
+  console.log(`Answer: ${results.completion}`);
+}
+```
+
+```bash cURL
+curl -X POST "https://api.airweave.ai/v1/collections/customer-support-x7k9m/search" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How do I reset my password?"
+  }'
+```
+</CodeGroup>
+
+## Search Strategies
+
+Choose how Airweave searches your data with the `retrieval_strategy` parameter.
+
+<Tabs>
+  <Tab title="Hybrid (Default)">
+    Combines semantic understanding with keyword matching for best results.
+    
+    ```python
+    results = client.collections.search(
+        readable_id="my-collection",
+        query="authentication security vulnerabilities",
+        retrieval_strategy="hybrid"  # default
+    )
+    ```
+    
+    **Use when:** You want the best of both worlds - finds results by meaning AND exact keywords.
+  </Tab>
+  
+  <Tab title="Neural">
+    Pure semantic search using embeddings. Understands meaning, not just keywords.
+    
+    ```python
+    results = client.collections.search(
+        readable_id="my-collection",
+        query="How to secure user login?",
+        retrieval_strategy="neural"
+    )
+    ```
+    
+    **Use when:** The query is conversational or when you want conceptually similar results even if exact terms don't match.
+  </Tab>
+  
+  <Tab title="Keyword">
+    Traditional BM25 keyword search. Fast and precise for exact term matching.
+    
+    ```python
+    results = client.collections.search(
+        readable_id="my-collection",
+        query="JWT token expiration",
+        retrieval_strategy="keyword"
+    )
+    ```
+    
+    **Use when:** You need exact keyword matches or technical terms that shouldn't be interpreted semantically.
+  </Tab>
+</Tabs>
+
+## Filtering Results
+
+Apply structured metadata filters to narrow your search. Filters use a boolean logic structure with `must` (AND), `should` (OR), and `must_not` (NOT) conditions.
+
+### Filter by Source
+
+<CodeGroup>
+```python Python
+# Filter to specific source
+results = client.collections.search(
+    readable_id="my-collection",
+    query="deployment issues",
+    filter={
+        "must": [{
+            "key": "source_name",
+            "match": {"value": "GitHub"}  # Case-sensitive!
+        }]
+    }
+)
+
+# Multiple sources (OR)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="customer feedback",
+    filter={
+        "must": [{
+            "key": "source_name",
+            "match": {"any": ["Zendesk", "Intercom", "Slack"]}
+        }]
+    }
+)
+```
+
+```typescript TypeScript
+// Filter to specific source
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "deployment issues",
+    filter: {
+      must: [{
+        key: "source_name",
+        match: { value: "GitHub" }  // Case-sensitive!
+      }]
+    }
+  }
+);
+
+// Multiple sources (OR)
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "customer feedback",
+    filter: {
+      must: [{
+        key: "source_name",
+        match: { any: ["Zendesk", "Intercom", "Slack"] }
+      }]
+    }
+  }
+);
+```
+
+```bash cURL
+curl -X POST "https://api.airweave.ai/v1/collections/my-collection/search" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "deployment issues",
+    "filter": {
+      "must": [{
+        "key": "source_name",
+        "match": {"value": "GitHub"}
+      }]
+    }
+  }'
+```
+</CodeGroup>
+
+### Date Range Filters
+
+<CodeGroup>
+```python Python
+from datetime import datetime, timezone, timedelta
+
+# Last 7 days
+results = client.collections.search(
+    readable_id="my-collection",
+    query="bug reports",
+    filter={
+        "must": [{
+            "key": "created_at",
+            "range": {
+                "gte": (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+            }
+        }]
+    }
+)
+
+# Specific date range
+results = client.collections.search(
+    readable_id="my-collection",
+    query="Q1 analytics",
+    filter={
+        "must": [{
+            "key": "updated_at",
+            "range": {
+                "gte": "2024-01-01T00:00:00Z",
+                "lt": "2024-04-01T00:00:00Z"
+            }
+        }]
+    }
+)
+```
+
+```typescript TypeScript
+// Last 7 days
+const oneWeekAgo = new Date();
+oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "bug reports",
+    filter: {
+      must: [{
+        key: "created_at",
+        range: {
+          gte: oneWeekAgo.toISOString()
+        }
+      }]
+    }
+  }
+);
+
+// Specific date range
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "Q1 analytics",
+    filter: {
+      must: [{
+        key: "updated_at",
+        range: {
+          gte: "2024-01-01T00:00:00Z",
+          lt: "2024-04-01T00:00:00Z"
+        }
+      }]
+    }
+  }
+);
+```
+</CodeGroup>
+
+### Exclude Results
+
+<CodeGroup>
+```python Python
+# Exclude resolved items
+results = client.collections.search(
+    readable_id="my-collection",
+    query="open tickets",
+    filter={
+        "must_not": [{
+            "key": "status",
+            "match": {"any": ["resolved", "closed", "done"]}
+        }]
+    }
+)
+```
+
+```typescript TypeScript
+// Exclude resolved items
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "open tickets",
+    filter: {
+      must_not: [{
+        key: "status",
+        match: { any: ["resolved", "closed", "done"] }
+      }]
+    }
+  }
+);
+```
+</CodeGroup>
+
+### Complex Filters
+
+Combine multiple conditions:
+
+```python
+results = client.collections.search(
+    readable_id="my-collection",
+    query="critical bugs",
+    filter={
+        "must": [
+            # Only from GitHub
+            {
+                "key": "source_name",
+                "match": {"value": "GitHub"}
+            },
+            # From last 30 days
+            {
+                "key": "created_at",
+                "range": {
+                    "gte": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+                }
+            }
+        ],
+        # NOT resolved
+        "must_not": [{
+            "key": "status",
+            "match": {"value": "resolved"}
+        }]
+    }
+)
+```
+
+## AI Features
+
+### Query Expansion
+
+Generate query variations to improve recall. Enabled by default.
+
+<CodeGroup>
+```python Python
+# With expansion (default)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="customer churn analysis",
+    expand_query=True  # default
+)
+
+# Without expansion (faster, exact query only)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="customer churn analysis",
+    expand_query=False
+)
+```
+
+```typescript TypeScript
+// With expansion (default)
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "customer churn analysis",
+    expandQuery: true  // default
+  }
+);
+
+// Without expansion
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "customer churn analysis",
+    expandQuery: false
+  }
+);
+```
+</CodeGroup>
+
+### Reranking
+
+LLM-based reordering for improved relevance. Adds ~10 seconds of latency.
+
+<CodeGroup>
+```python Python
+# With reranking (default, more accurate)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="authentication methods",
+    rerank=True  # default
+)
+
+# Without reranking (faster)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="authentication methods",
+    rerank=False
+)
+```
+
+```typescript TypeScript
+// With reranking (default)
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "authentication methods",
+    rerank: true  // default
+  }
+);
+
+// Without reranking (faster)
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "authentication methods",
+    rerank: false
+  }
+);
+```
+</CodeGroup>
+
+<Warning>
+Reranking adds about 10 seconds to your search. Disable it if you need fast results for interactive applications.
+</Warning>
+
+### Answer Generation
+
+Generate AI-synthesized answers from search results. Enabled by default.
+
+<CodeGroup>
+```python Python
+# Generate answer (default)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="What are our refund policies?",
+    generate_answer=True  # default
+)
+
+print(f"Answer: {results.completion}")
+# Answer: According to the customer support documentation, 
+# refunds are processed within 5-7 business days...
+
+# Raw results only (faster)
+results = client.collections.search(
+    readable_id="my-collection",
+    query="refund policies",
+    generate_answer=False
+)
+
+for result in results.results:
+    print(result['md_content'])
+```
+
+```typescript TypeScript
+// Generate answer (default)
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "What are our refund policies?",
+    generateAnswer: true  // default
+  }
+);
+
+console.log(`Answer: ${results.completion}`);
+
+// Raw results only
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "refund policies",
+    generateAnswer: false
+  }
+);
+```
+</CodeGroup>
+
+### Filter Interpretation (Beta)
+
+<Warning>
+**Beta Feature**: Filter interpretation can occasionally filter too narrowly. Verify result counts.
+</Warning>
+
+Automatically extract structured filters from natural language queries.
+
+<CodeGroup>
+```python Python
+# AI interprets "last week" and "Asana" as filters
+results = client.collections.search(
+    readable_id="my-collection",
+    query="open Asana tickets from last week",
+    interpret_filters=True
+)
+# AI understands: Asana source, open status, last 7 days
+
+# Another example
+results = client.collections.search(
+    readable_id="my-collection",
+    query="critical bugs from GitHub this month",
+    interpret_filters=True
+)
+# AI extracts: GitHub source, critical priority, current month date range
+```
+
+```typescript TypeScript
+// AI interprets filters from natural language
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "open Asana tickets from last week",
+    interpretFilters: true
+  }
+);
+
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "critical bugs from GitHub this month",
+    interpretFilters: true
+  }
+);
+```
+</CodeGroup>
+
+## Pagination
+
+Navigate through large result sets with `limit` and `offset`.
+
+<CodeGroup>
+```python Python
+# First 50 results
+results = client.collections.search(
+    readable_id="my-collection",
+    query="documentation",
+    limit=50,
+    offset=0
+)
+
+# Next 50 results
+results = client.collections.search(
+    readable_id="my-collection",
+    query="documentation",
+    limit=50,
+    offset=50
+)
+```
+
+```typescript TypeScript
+// First 50 results
+const results = await client.collections.search(
+  "my-collection",
+  {
+    query: "documentation",
+    limit: 50,
+    offset: 0
+  }
+);
+
+// Next 50 results
+const results2 = await client.collections.search(
+  "my-collection",
+  {
+    query: "documentation",
+    limit: 50,
+    offset: 50
+  }
+);
+```
+</CodeGroup>
+
+<ParamField query="limit" type="integer" default="1000">
+  Maximum number of results to return (1-1000)
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of results to skip for pagination
+</ParamField>
+
+## Streaming Search
+
+For real-time results, use the streaming endpoint with Server-Sent Events (SSE).
+
+<CodeGroup>
+```python Python
+import asyncio
+
+async def stream_search():
+    async for event in client.collections.search_stream(
+        readable_id="my-collection",
+        query="deployment procedures"
+    ):
+        if event["type"] == "result":
+            print(f"Result: {event['data']}")
+        elif event["type"] == "completion":
+            print(f"Answer: {event['data']}")
+        elif event["type"] == "done":
+            print("Search complete")
+            break
+
+asyncio.run(stream_search())
+```
+
+```typescript TypeScript
+const stream = await client.collections.searchStream(
+  "my-collection",
+  {
+    query: "deployment procedures"
+  }
+);
+
+for await (const event of stream) {
+  if (event.type === "result") {
+    console.log(`Result: ${event.data}`);
+  } else if (event.type === "completion") {
+    console.log(`Answer: ${event.data}`);
+  } else if (event.type === "done") {
+    console.log("Search complete");
+    break;
+  }
+}
+```
+</CodeGroup>
+
+## Complete Example
+
+Here's a comprehensive search using all available parameters:
+
+```python
+from airweave import AirweaveSDK
+from datetime import datetime, timezone, timedelta
+
+client = AirweaveSDK(api_key="YOUR_API_KEY")
+
+results = client.collections.search(
+    readable_id="customer-support-x7k9m",
+    query="customer feedback about pricing",
+    
+    # Search strategy
+    retrieval_strategy="hybrid",
+    
+    # Filters
+    filter={
+        "must": [
+            {"key": "source_name", "match": {"any": ["Zendesk", "Slack"]}},
+            {"key": "created_at", "range": {
+                "gte": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            }}
+        ],
+        "must_not": [
+            {"key": "status", "match": {"value": "resolved"}}
+        ]
+    },
+    
+    # AI features
+    expand_query=True,
+    rerank=True,
+    generate_answer=True,
+    
+    # Pagination
+    limit=50,
+    offset=0
+)
+
+# Process results
+print(f"Found {len(results.results)} results\n")
+
+if results.completion:
+    print(f"AI Answer: {results.completion}\n")
+
+for i, result in enumerate(results.results[:5], 1):
+    print(f"Result {i}:")
+    print(f"  Score: {result['score']:.3f}")
+    print(f"  Source: {result['source_name']}")
+    print(f"  Content: {result['md_content'][:150]}...")
+    print(f"  URL: {result.get('url', 'N/A')}")
+    print()
+```
+
+## Search Parameters Reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | required | Search query text (max 2048 tokens) |
+| `retrieval_strategy` | string | `"hybrid"` | `"hybrid"`, `"neural"`, or `"keyword"` |
+| `filter` | object | `null` | Structured metadata filters |
+| `expand_query` | boolean | `true` | Generate query variations |
+| `interpret_filters` | boolean | `false` | Extract filters from natural language |
+| `rerank` | boolean | `true` | LLM-based reranking |
+| `generate_answer` | boolean | `true` | Generate AI answer |
+| `limit` | integer | `1000` | Max results (1-1000) |
+| `offset` | integer | `0` | Skip results for pagination |
+
+## Response Structure
+
+```json
+{
+  "results": [
+    {
+      "entity_id": "abc123-def456-789012",
+      "source_name": "GitHub",
+      "md_content": "# Password Reset Guide\n\nTo reset your password...",
+      "metadata": {
+        "file_path": "docs/auth/password-reset.md",
+        "last_modified": "2024-03-15T09:30:00Z"
+      },
+      "score": 0.92,
+      "breadcrumbs": ["docs", "auth", "password-reset.md"],
+      "url": "https://github.com/company/docs/blob/main/docs/auth/password-reset.md"
+    }
+  ],
+  "completion": "To reset your password, navigate to the login page..."
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="database" href="/collections">
+    Learn about organizing data with collections
+  </Card>
+  
+  <Card title="Webhooks" icon="webhook" href="/webhooks">
+    Get notified when syncs complete
+  </Card>
+</CardGroup>

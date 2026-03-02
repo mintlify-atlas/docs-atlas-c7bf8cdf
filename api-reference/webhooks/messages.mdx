@@ -1,0 +1,277 @@
+---
+title: 'Webhook Messages'
+description: 'Retrieve and inspect webhook event messages and delivery attempts'
+---
+
+## Overview
+
+Webhook messages represent payloads that were sent (or attempted to be sent) to your subscribed endpoints. Each message contains the event type, payload data, and delivery status information.
+
+## List Messages
+
+<ParamField method="GET" path="/v1/webhooks/messages">
+  Retrieve all webhook messages for your organization
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="event_types" type="array">
+  Filter messages by event type(s)
+  
+  Accepts multiple values: `?event_types=sync.completed&event_types=sync.failed`
+</ParamField>
+
+### Response
+
+Returns an array of webhook message objects.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier for this message
+</ResponseField>
+
+<ResponseField name="event_type" type="string" required>
+  The type of event (e.g., `sync.completed`, `sync.failed`)
+</ResponseField>
+
+<ResponseField name="payload" type="object" required>
+  The event payload data, matching what is delivered to webhooks
+  
+  Structure varies by event_type.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string" required>
+  When this message was created (ISO 8601 format, UTC)
+</ResponseField>
+
+<ResponseField name="channels" type="array">
+  Channels this message was sent to
+</ResponseField>
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/webhooks/messages?event_types=sync.completed" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/webhooks/messages"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+params = {"event_types": ["sync.completed", "sync.failed"]}
+
+response = requests.get(url, headers=headers, params=params)
+messages = response.json()
+
+for msg in messages:
+    print(f"{msg['event_type']}: {msg['id']}")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/webhooks/messages?event_types=sync.completed&event_types=sync.failed';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const messages = await response.json();
+
+messages.forEach(msg => {
+  console.log(`${msg.event_type}: ${msg.id}`);
+});
+```
+
+</CodeGroup>
+
+### Example Response
+
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "event_type": "sync.completed",
+    "payload": {
+      "event_type": "sync.completed",
+      "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "collection_readable_id": "customer-support-tickets-x7k9m",
+      "collection_name": "Customer Support Tickets",
+      "source_connection_id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "source_type": "zendesk",
+      "status": "completed",
+      "timestamp": "2024-03-15T09:45:32Z",
+      "error": null
+    },
+    "timestamp": "2024-03-15T09:45:32Z",
+    "channels": ["sync.completed"],
+    "tags": null
+  }
+]
+```
+
+---
+
+## Get Message
+
+<ParamField method="GET" path="/v1/webhooks/messages/{message_id}">
+  Retrieve a specific webhook message by its ID
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="message_id" type="string" required>
+  UUID of the message to retrieve
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="include_attempts" type="boolean" default={false}>
+  Include delivery attempts for this message
+  
+  Each attempt includes the HTTP response code, response body, and timestamp.
+</ParamField>
+
+### Response
+
+Returns a message object with optional delivery attempts.
+
+<ResponseField name="delivery_attempts" type="array">
+  Delivery attempts for this message (only when `include_attempts=true`)
+  
+  <Expandable title="attempt properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for this delivery attempt
+    </ResponseField>
+    
+    <ResponseField name="message_id" type="string">
+      The event message that was being delivered
+    </ResponseField>
+    
+    <ResponseField name="endpoint_id" type="string">
+      The subscription endpoint this was delivered to
+    </ResponseField>
+    
+    <ResponseField name="response" type="string">
+      Response body returned by your webhook endpoint (truncated to 1KB)
+    </ResponseField>
+    
+    <ResponseField name="response_status_code" type="integer">
+      HTTP status code returned by your endpoint
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Delivery status: `success`, `pending`, or `failed`
+    </ResponseField>
+    
+    <ResponseField name="timestamp" type="string">
+      When this delivery attempt occurred (ISO 8601)
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      The URL that was called
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/webhooks/messages/a1b2c3d4-e5f6-7890-abcd-ef1234567890?include_attempts=true" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/webhooks/messages/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+params = {"include_attempts": True}
+
+response = requests.get(url, headers=headers, params=params)
+message = response.json()
+
+if message.get('delivery_attempts'):
+    for attempt in message['delivery_attempts']:
+        print(f"Attempt {attempt['id']}: {attempt['status']} ({attempt['response_status_code']})")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/webhooks/messages/a1b2c3d4-e5f6-7890-abcd-ef1234567890?include_attempts=true';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const message = await response.json();
+
+if (message.delivery_attempts) {
+  message.delivery_attempts.forEach(attempt => {
+    console.log(`Attempt ${attempt.id}: ${attempt.status} (${attempt.response_status_code})`);
+  });
+}
+```
+
+</CodeGroup>
+
+### Example Response
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "event_type": "sync.completed",
+  "payload": {
+    "event_type": "sync.completed",
+    "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "collection_readable_id": "customer-support-tickets-x7k9m",
+    "collection_name": "Customer Support Tickets",
+    "source_connection_id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+    "source_type": "zendesk",
+    "status": "completed",
+    "timestamp": "2024-03-15T09:45:32Z"
+  },
+  "timestamp": "2024-03-15T09:45:32Z",
+  "channels": ["sync.completed"],
+  "delivery_attempts": [
+    {
+      "id": "atmpt_2bVxUn3RFnLYHa8z6ZKHMT9PqPX",
+      "message_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "endpoint_id": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+      "response": "{\"status\": \"processed\", \"id\": \"evt_123\"}",
+      "response_status_code": 200,
+      "status": "success",
+      "timestamp": "2024-03-15T09:45:33Z",
+      "url": "https://api.mycompany.com/webhooks/airweave"
+    }
+  ]
+}
+```
+
+---
+
+## Event Types
+
+Airweave sends webhook events for the following event types:
+
+### Sync Events
+
+- **sync.pending**: Sync job has been queued
+- **sync.running**: Sync job is actively running
+- **sync.completed**: Sync job finished successfully
+- **sync.failed**: Sync job encountered an error
+- **sync.cancelled**: Sync job was cancelled
+
+### Source Connection Events
+
+- **source_connection.created**: New source connection created
+- **source_connection.auth_completed**: OAuth authentication completed
+- **source_connection.deleted**: Source connection deleted
+
+### Collection Events
+
+- **collection.created**: New collection created
+- **collection.updated**: Collection updated
+- **collection.deleted**: Collection deleted

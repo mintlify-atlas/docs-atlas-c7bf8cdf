@@ -1,0 +1,80 @@
+---
+title: Asana
+description: Connect Asana to Airweave to sync projects, tasks, and workflows
+---
+
+Connect Asana to Airweave to make your project management data searchable by AI agents.
+
+## What Gets Synced
+
+The Asana connector syncs:
+
+- **Workspaces** - Organization-level containers
+- **Projects** - Project metadata, status, and custom fields
+- **Sections** - Project sections/columns
+- **Tasks** - Task details, assignments, and dependencies
+- **Comments** - Task comments and discussions
+- **Attachments** - Files attached to tasks
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Add Asana Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Asana**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Asana workspaces.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Asana data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Asana Projects
+
+Project containers with metadata and custom fields.
+
+**Key fields:**
+- Project name and description
+- Created/modified timestamps
+- Owner and team
+- Current status
+- Custom field values
+
+### Asana Tasks
+
+Task details with full context.
+
+**Key fields:**
+- Task name and notes
+- Assignee and status
+- Due dates and dependencies
+- Custom fields
+- Parent/subtask relationships
+
+### Asana Comments
+
+Comments and discussions on tasks.
+
+**Key fields:**
+- Comment text (plain and HTML)
+- Author and timestamp
+- Associated task
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/asana.py"
+>
+  Explore the Asana connector implementation on GitHub
+</Card>

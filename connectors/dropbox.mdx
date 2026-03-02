@@ -1,0 +1,63 @@
+---
+title: Dropbox
+description: Connect Dropbox to Airweave to sync files and folders
+---
+
+Connect Dropbox to Airweave to make your files searchable by AI agents.
+
+## What Gets Synced
+
+The Dropbox connector syncs:
+
+- **Account** - Account-level metadata
+- **Folders** - Folder structure and sharing info
+- **Files** - All files with metadata and content
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials.
+
+## Setup
+
+<Steps>
+  <Step title="Create Dropbox App">
+    1. Go to [Dropbox App Console](https://www.dropbox.com/developers/apps/create)
+    2. Create a new app with "Full Dropbox" access
+  </Step>
+  
+  <Step title="Configure OAuth">
+    1. Under **Settings**, add redirect URI:
+       - Production: `https://api.airweave.ai/source-connections/callback`
+       - Local: `http://localhost:8001/source-connections/callback`
+    2. Under **Permissions**, enable:
+       - `account_info.read`
+       - `files.metadata.read`
+       - `files.content.read`
+  </Step>
+  
+  <Step title="Add Dropbox Connection">
+    In Airweave, enter your App key and App secret, then authorize access.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Dropbox Files
+
+Files with full metadata.
+
+**Key fields:**
+- File name and path
+- Modified timestamps
+- Content hash
+- Sharing information
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/dropbox.py"
+>
+  Explore the Dropbox connector implementation on GitHub
+</Card>

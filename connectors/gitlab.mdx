@@ -1,0 +1,40 @@
+---
+title: GitLab
+description: Connect GitLab to Airweave to sync repositories and code
+---
+
+Connect GitLab repositories to Airweave to make your code searchable by AI agents.
+
+## What Gets Synced
+
+The GitLab connector syncs repository data including files, commits, and metadata.
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Add GitLab Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **GitLab**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your GitLab repositories.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your GitLab data.
+  </Step>
+</Steps>
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/gitlab.py"
+>
+  Explore the GitLab connector implementation on GitHub
+</Card>

@@ -1,0 +1,72 @@
+---
+title: ClickUp
+description: Connect ClickUp to Airweave to sync tasks, lists, and workspaces
+---
+
+Connect ClickUp to Airweave to make your task management data searchable by AI agents.
+
+## What Gets Synced
+
+The ClickUp connector syncs:
+
+- **Workspaces** - Top-level organization containers
+- **Spaces** - Workspace subdivisions
+- **Folders** - Space folders
+- **Lists** - Task lists
+- **Tasks** - Tasks with full details
+- **Subtasks** - Nested tasks
+- **Comments** - Task discussions
+- **Attachments** - Files attached to tasks
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Add ClickUp Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **ClickUp**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your ClickUp workspaces.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your ClickUp data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### ClickUp Tasks
+
+Complete task data including custom fields.
+
+**Key fields:**
+- Task name and description
+- Status and priority
+- Assignees and tags
+- Due dates and time tracking
+- Custom field values
+
+### ClickUp Lists
+
+Task list containers.
+
+**Key fields:**
+- List name and content
+- Folder and space association
+- Status configuration
+- Task count
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/clickup.py"
+>
+  Explore the ClickUp connector implementation on GitHub
+</Card>

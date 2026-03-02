@@ -1,0 +1,85 @@
+---
+title: 'Authentication'
+description: 'Authenticate your API requests using bearer tokens'
+---
+
+## API Authentication
+
+Airweave uses bearer token authentication to secure all API requests. You need to include your API key in the `Authorization` header of every request.
+
+### Obtaining Your API Key
+
+1. Log in to your Airweave dashboard
+2. Navigate to **Settings** > **API Keys**
+3. Click **Create API Key**
+4. Copy your API key and store it securely
+
+<Warning>
+Treat your API keys like passwords. Never share them publicly or commit them to version control. If a key is compromised, revoke it immediately and generate a new one.
+</Warning>
+
+### Making Authenticated Requests
+
+Include your API key in the `Authorization` header using the Bearer scheme:
+
+```bash
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.airweave.ai/v1/collections \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+```python Python
+import requests
+
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+response = requests.get(
+    "https://api.airweave.ai/v1/collections",
+    headers=headers
+)
+```
+
+```typescript TypeScript
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+
+const response = await fetch('https://api.airweave.ai/v1/collections', {
+  method: 'GET',
+  headers: headers
+});
+```
+
+</CodeGroup>
+
+### Authentication Errors
+
+| Status Code | Description |
+|-------------|-------------|
+| `401 Unauthorized` | Missing or invalid API key |
+| `403 Forbidden` | Valid API key but insufficient permissions |
+| `429 Too Many Requests` | Rate limit exceeded |
+
+### Development Mode
+
+For development and testing environments, Airweave can be configured with `AUTH_ENABLED=False` to disable authentication. This is useful for local development but should **never** be used in production.
+
+### Best Practices
+
+- **Store securely**: Use environment variables or a secrets manager
+- **Rotate regularly**: Generate new keys periodically
+- **Use minimal permissions**: Create separate keys for different services
+- **Monitor usage**: Track API key usage in your dashboard
+- **Revoke immediately**: If a key is compromised, revoke it right away

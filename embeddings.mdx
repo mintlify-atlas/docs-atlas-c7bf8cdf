@@ -1,0 +1,648 @@
+---
+title: 'Embeddings'
+description: 'Configure embedding models for semantic search and vector retrieval'
+---
+
+## Overview
+
+Airweave uses both **dense** and **sparse** embeddings for hybrid search:
+
+- **Dense embeddings**: Semantic similarity via neural networks (384-3072 dimensions)
+- **Sparse embeddings**: Keyword matching via BM25 (traditional search)
+
+Combining both provides better search quality than either alone.
+
+<Note>
+  All three embedding variables are **required** in `.env`:
+  - `DENSE_EMBEDDER`
+  - `EMBEDDING_DIMENSIONS`
+  - `SPARSE_EMBEDDER`
+</Note>
+
+## Available Dense Embedders
+
+Airweave supports 4 dense embedding models out of the box:
+
+<Tabs>
+  <Tab title="OpenAI Small (Recommended)">
+    **Model**: `openai_text_embedding_3_small`
+    
+    **Provider**: OpenAI
+    
+    **Dimensions**: Up to 1536 (Matryoshka support)
+    
+    **Max Tokens**: 8,192 per chunk
+    
+    **API Model**: `text-embedding-3-small`
+    
+    **Configuration**:
+    ```bash .env
+    DENSE_EMBEDDER=openai_text_embedding_3_small
+    EMBEDDING_DIMENSIONS=1536
+    OPENAI_API_KEY=sk-...
+    ```
+    
+    **Features**:
+    - Excellent quality/cost balance
+    - Matryoshka embeddings (can use fewer dimensions)
+    - Fast inference
+    - 62% lower cost than text-embedding-ada-002
+    
+    **Best for**: Production deployments, general-purpose search
+  </Tab>
+
+  <Tab title="OpenAI Large">
+    **Model**: `openai_text_embedding_3_large`
+    
+    **Provider**: OpenAI
+    
+    **Dimensions**: Up to 3072 (Matryoshka support)
+    
+    **Max Tokens**: 8,192 per chunk
+    
+    **API Model**: `text-embedding-3-large`
+    
+    **Configuration**:
+    ```bash .env
+    DENSE_EMBEDDER=openai_text_embedding_3_large
+    EMBEDDING_DIMENSIONS=3072
+    OPENAI_API_KEY=sk-...
+    ```
+    
+    **Features**:
+    - Best search quality
+    - Higher dimensionality for complex domains
+    - Matryoshka embeddings supported
+    - Higher API cost
+    
+    **Best for**: High-accuracy search requirements, complex knowledge bases
+  </Tab>
+
+  <Tab title="Mistral">
+    **Model**: `mistral_embed`
+    
+    **Provider**: Mistral AI
+    
+    **Dimensions**: 1024 (fixed)
+    
+    **Max Tokens**: 8,000 per chunk
+    
+    **API Model**: `mistral-embed`
+    
+    **Configuration**:
+    ```bash .env
+    DENSE_EMBEDDER=mistral_embed
+    EMBEDDING_DIMENSIONS=1024
+    MISTRAL_API_KEY=...
+    ```
+    
+    **Features**:
+    - No Matryoshka support (fixed dimensions)
+    - Good quality for European languages
+    - Competitive pricing
+    - Max batch size: 128 texts
+    
+    **Best for**: Multi-language deployments, OpenAI alternative
+  </Tab>
+
+  <Tab title="Local (Self-Hosted)">
+    **Model**: `local_minilm`
+    
+    **Provider**: Local (sentence-transformers)
+    
+    **Dimensions**: 384 (fixed)
+    
+    **Max Tokens**: 512 per chunk
+    
+    **API Model**: `sentence-transformers/all-MiniLM-L6-v2`
+    
+    **Configuration**:
+    ```bash .env
+    DENSE_EMBEDDER=local_minilm
+    EMBEDDING_DIMENSIONS=384
+    TEXT2VEC_INFERENCE_URL=http://localhost:9878
+    ```
+    
+    **Features**:
+    - No API costs
+    - No external dependencies
+    - Runs in Docker container (~2GB RAM)
+    - Lower quality than cloud models
+    - Smaller token limit
+    
+    **Best for**: Development, air-gapped environments, cost-sensitive deployments
+    
+    **Docker Container**:
+    ```yaml
+    text2vec-transformers:
+      image: semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+      ports:
+        - "9878:8080"
+      environment:
+        ENABLE_CUDA: 0
+        WORKERS_PER_NODE: 1
+    ```
+  </Tab>
+</Tabs>
+
+## Sparse Embedders (Keyword Search)
+
+<ParamField path="fastembed_bm25" type="string">
+  **Provider**: FastEmbed (Qdrant)
+  
+  **Algorithm**: BM25 (Best Matching 25)
+  
+  **Model**: `Qdrant/bm25`
+  
+  **Configuration**:
+  ```bash .env
+  SPARSE_EMBEDDER=fastembed_bm25
+  ```
+  
+  **Features**:
+  - Traditional keyword search
+  - No API key required
+  - Fast, deterministic
+  - Complements dense embeddings
+  
+  **Note**: Currently the only sparse embedder supported. More coming soon.
+</ParamField>
+
+## Matryoshka Embeddings
+
+OpenAI's `text-embedding-3-small` and `text-embedding-3-large` support **Matryoshka Representation Learning**, allowing you to use fewer dimensions:
+
+<AccordionGroup>
+  <Accordion title="What are Matryoshka embeddings?">
+    Matryoshka embeddings encode information hierarchically:
+    - Most important information in early dimensions
+    - Less critical information in later dimensions
+    - Can truncate to fewer dimensions with minimal quality loss
+    
+    **Example**: Use 512 dimensions instead of 1536 for 3x faster search and 67% less storage.
+  </Accordion>
+
+  <Accordion title="How to configure">
+    Set `EMBEDDING_DIMENSIONS` to any value up to the model's maximum:
+    
+    **text-embedding-3-small** (max 1536):
+    ```bash
+    EMBEDDING_DIMENSIONS=512   # Fast, lower quality
+    EMBEDDING_DIMENSIONS=1024  # Balanced
+    EMBEDDING_DIMENSIONS=1536  # Maximum quality
+    ```
+    
+    **text-embedding-3-large** (max 3072):
+    ```bash
+    EMBEDDING_DIMENSIONS=768   # Fast, lower quality
+    EMBEDDING_DIMENSIONS=1536  # Balanced
+    EMBEDDING_DIMENSIONS=3072  # Maximum quality
+    ```
+  </Accordion>
+
+  <Accordion title="Performance vs Quality Tradeoffs">
+    | Dimensions | Search Speed | Storage | Quality |
+    |------------|--------------|---------|----------|
+    | 256 | 6x faster | 83% less | Good |
+    | 512 | 3x faster | 67% less | Better |
+    | 1024 | 1.5x faster | 33% less | Very Good |
+    | 1536 | Baseline | Baseline | Excellent |
+    
+    **Recommendation**: Start with 1536, reduce to 1024 if you need better performance.
+  </Accordion>
+
+  <Accordion title="Important: Cannot change after deployment">
+    <Warning>
+      Changing `EMBEDDING_DIMENSIONS` after indexing data requires **complete re-indexing**. All documents must be re-synced.
+    </Warning>
+    
+    Airweave validates dimensions at startup against the database:
+    ```
+    EmbeddingConfigError: Embedding config mismatch: 
+    embedding_dimensions: code=1024, db=1536. 
+    Changing embedding model or dimensions makes all synced 
+    data unsearchable — you would have to delete all data and resync.
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Embedding Configuration Validation
+
+Airweave performs strict validation at startup:
+
+<Steps>
+  <Step title="Environment Variable Check">
+    Ensures all three required variables are set:
+    ```python
+    DENSE_EMBEDDER: str = settings.DENSE_EMBEDDER or ""
+    EMBEDDING_DIMENSIONS: int = settings.EMBEDDING_DIMENSIONS or 0
+    SPARSE_EMBEDDER: str = settings.SPARSE_EMBEDDER or ""
+    ```
+    
+    **Error if missing**:
+    ```
+    EmbeddingConfigError: Required environment variable 'DENSE_EMBEDDER' 
+    is not set. Add it to your .env file.
+    Available options: openai_text_embedding_3_small, 
+    openai_text_embedding_3_large, mistral_embed, local_minilm
+    ```
+  </Step>
+
+  <Step title="Registry Lookup">
+    Validates embedder names exist in the registry:
+    ```python
+    dense_spec = dense_registry.get(DENSE_EMBEDDER)
+    sparse_spec = sparse_registry.get(SPARSE_EMBEDDER)
+    ```
+  </Step>
+
+  <Step title="Dimension Validation">
+    **For Matryoshka models** (OpenAI):
+    ```python
+    if EMBEDDING_DIMENSIONS > dense_spec.max_dimensions:
+        raise EmbeddingConfigError(
+            f"EMBEDDING_DIMENSIONS={EMBEDDING_DIMENSIONS} exceeds "
+            f"max_dimensions={dense_spec.max_dimensions}"
+        )
+    ```
+    
+    **For fixed-dimension models** (Mistral, Local):
+    ```python
+    if EMBEDDING_DIMENSIONS != dense_spec.max_dimensions:
+        raise EmbeddingConfigError(
+            f"Dense embedder '{DENSE_EMBEDDER}' does not support "
+            f"Matryoshka dimensions — EMBEDDING_DIMENSIONS must be "
+            f"exactly {dense_spec.max_dimensions}"
+        )
+    ```
+  </Step>
+
+  <Step title="Credential Check">
+    Verifies required API keys are present:
+    ```python
+    if dense_spec.required_setting:  # e.g., "OPENAI_API_KEY"
+        value = getattr(settings, dense_spec.required_setting, None)
+        if not value:
+            raise EmbeddingConfigError(
+                f"Dense embedder '{DENSE_EMBEDDER}' requires setting "
+                f"'{dense_spec.required_setting}' but it is not set."
+            )
+    ```
+  </Step>
+
+  <Step title="Database Reconciliation">
+    Checks configuration against existing deployment metadata:
+    ```python
+    # First deployment: Create metadata row
+    if row is None:
+        row = VectorDbDeploymentMetadata(
+            dense_embedder=DENSE_EMBEDDER,
+            embedding_dimensions=EMBEDDING_DIMENSIONS,
+            sparse_embedder=SPARSE_EMBEDDER,
+        )
+    
+    # Existing deployment: Validate match
+    if row.dense_embedder != DENSE_EMBEDDER:
+        raise EmbeddingConfigError(
+            "Changing embedding model makes all synced data unsearchable"
+        )
+    ```
+  </Step>
+</Steps>
+
+## Embedding Implementation Details
+
+### OpenAI Embedder
+
+<CodeGroup>
+
+```python Batch Processing
+class OpenAIDenseEmbedder:
+    _MAX_TOKENS_PER_TEXT: int = 8192
+    _MAX_TEXTS_PER_SUB_BATCH: int = 100
+    _MAX_TOKENS_PER_REQUEST: int = 300_000
+    _MAX_CONCURRENT_REQUESTS: int = 10
+    
+    async def embed_many(self, texts: list[str]) -> list[DenseEmbedding]:
+        # Validate inputs
+        token_counts = self._validate_inputs(texts)
+        
+        # Split into sub-batches (max 100 texts)
+        sub_batches = [
+            (texts[i:i+100], token_counts[i:i+100])
+            for i in range(0, len(texts), 100)
+        ]
+        
+        # Process batches concurrently
+        tasks = [self._embed_sub_batch(batch, counts) 
+                 for batch, counts in sub_batches]
+        nested_results = await asyncio.gather(*tasks)
+        
+        return [emb for batch in nested_results for emb in batch]
+```
+
+```python Recursive Token Splitting
+async def _embed_sub_batch(self, batch, token_counts):
+    total_tokens = sum(token_counts)
+    
+    # Recursively split if exceeds 300K tokens
+    if total_tokens > self._MAX_TOKENS_PER_REQUEST and len(batch) > 1:
+        mid = len(batch) // 2
+        left, right = await asyncio.gather(
+            self._embed_sub_batch(batch[:mid], token_counts[:mid]),
+            self._embed_sub_batch(batch[mid:], token_counts[mid:]),
+        )
+        return left + right
+    
+    # Process single batch
+    async with self._semaphore:  # Max 10 concurrent
+        return await self._embed_batch(batch)
+```
+
+```python Token Counting
+from tiktoken import get_encoding
+
+self._encoder = get_encoding("cl100k_base")
+
+def _validate_inputs(self, texts):
+    token_counts = []
+    for i, text in enumerate(texts):
+        # Count tokens using OpenAI's tokenizer
+        token_count = len(self._encoder.encode(
+            text, 
+            allowed_special="all"  # Handle special tokens
+        ))
+        
+        if token_count > self._MAX_TOKENS_PER_TEXT:  # 8192
+            raise EmbedderInputError(
+                f"Text at index {i} has {token_count} tokens, "
+                f"exceeding limit of {self._MAX_TOKENS_PER_TEXT}"
+            )
+        
+        token_counts.append(token_count)
+    
+    return token_counts
+```
+
+</CodeGroup>
+
+### Error Handling
+
+All embedders translate provider-specific errors to common exceptions:
+
+<Tabs>
+  <Tab title="Authentication">
+    ```python
+    except openai.AuthenticationError as e:
+        raise EmbedderAuthError(
+            f"OpenAI authentication failed: {e}",
+            provider="openai",
+        ) from e
+    ```
+  </Tab>
+
+  <Tab title="Rate Limits">
+    ```python
+    except openai.RateLimitError as e:
+        retry_after = self._parse_retry_after(e)
+        raise EmbedderRateLimitError(
+            f"OpenAI rate limit exceeded: {e}",
+            provider="openai",
+            retry_after=retry_after,
+        ) from e
+    ```
+  </Tab>
+
+  <Tab title="Timeouts">
+    ```python
+    except openai.APITimeoutError as e:
+        raise EmbedderTimeoutError(
+            f"OpenAI request timed out: {e}",
+            provider="openai",
+        ) from e
+    ```
+  </Tab>
+
+  <Tab title="Connection Errors">
+    ```python
+    except openai.APIConnectionError as e:
+        raise EmbedderConnectionError(
+            f"OpenAI connection failed: {e}",
+            provider="openai",
+        ) from e
+    ```
+  </Tab>
+</Tabs>
+
+## Adding Custom Embedders
+
+To add a new embedding model:
+
+<Steps>
+  <Step title="Implement DenseEmbedderProtocol">
+    Create a new embedder class in `backend/airweave/domains/embedders/dense/`:
+    
+    ```python custom_embedder.py
+    from airweave.domains.embedders.protocols import DenseEmbedderProtocol
+    from airweave.domains.embedders.types import DenseEmbedding
+    
+    class CustomDenseEmbedder(DenseEmbedderProtocol):
+        def __init__(self, *, api_key: str, model: str, dimensions: int):
+            self._model = model
+            self._dimensions = dimensions
+            # Initialize client
+        
+        @property
+        def model_name(self) -> str:
+            return self._model
+        
+        @property
+        def dimensions(self) -> int:
+            return self._dimensions
+        
+        async def embed(self, text: str) -> DenseEmbedding:
+            # Implement single-text embedding
+            pass
+        
+        async def embed_many(self, texts: list[str]) -> list[DenseEmbedding]:
+            # Implement batch embedding with validation
+            pass
+        
+        async def close(self) -> None:
+            # Release resources
+            pass
+    ```
+  </Step>
+
+  <Step title="Register in registry_data.py">
+    Add spec to `DENSE_EMBEDDERS` list:
+    
+    ```python registry_data.py
+    from airweave.domains.embedders.dense.custom import CustomDenseEmbedder
+    
+    DENSE_EMBEDDERS.append(
+        DenseEmbedderSpec(
+            short_name="custom_embedder",
+            name="Custom Embedder",
+            description="Custom embedding model",
+            provider="custom",
+            api_model_name="custom-model-v1",
+            max_dimensions=768,
+            max_tokens=4096,
+            supports_matryoshka=False,
+            embedder_class=CustomDenseEmbedder,
+            required_setting="CUSTOM_API_KEY",
+        )
+    )
+    ```
+  </Step>
+
+  <Step title="Configure and use">
+    ```bash .env
+    DENSE_EMBEDDER=custom_embedder
+    EMBEDDING_DIMENSIONS=768
+    CUSTOM_API_KEY=...
+    ```
+  </Step>
+</Steps>
+
+## Performance Optimization
+
+### Concurrency Limits
+
+Each embedder has tuned concurrency limits:
+
+| Embedder | Max Concurrent | Batch Size | Tokens/Request |
+|----------|----------------|------------|----------------|
+| OpenAI Small/Large | 10 | 100 texts | 300,000 |
+| Mistral | 5 | 128 texts | 8,000 |
+| Local | 10 | 64 texts | N/A |
+
+### Batching Strategy
+
+<Info>
+  Airweave automatically batches embedding requests during sync jobs to maximize throughput while respecting API limits.
+</Info>
+
+```python
+# Sync processor batches chunks before embedding
+async def _embed_chunks(self, chunks: list[Chunk]):
+    # Extract text from all chunks
+    texts = [chunk.text for chunk in chunks]
+    
+    # Single batched call to embedder
+    dense_embeddings = await self.dense_embedder.embed_many(texts)
+    sparse_embeddings = await self.sparse_embedder.embed_many(texts)
+    
+    # Pair results with chunks
+    for chunk, dense, sparse in zip(chunks, dense_embeddings, sparse_embeddings):
+        chunk.dense_embedding = dense.vector
+        chunk.sparse_embedding = sparse.indices_and_values
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Error: DENSE_EMBEDDER not set">
+    **Symptom**:
+    ```
+    EmbeddingConfigError: Required environment variable 'DENSE_EMBEDDER' is not set.
+    ```
+    
+    **Solution**: Add all three variables to `.env`:
+    ```bash
+    DENSE_EMBEDDER=openai_text_embedding_3_small
+    EMBEDDING_DIMENSIONS=1536
+    SPARSE_EMBEDDER=fastembed_bm25
+    ```
+  </Accordion>
+
+  <Accordion title="Error: Dimension mismatch">
+    **Symptom**:
+    ```
+    EmbeddingConfigError: EMBEDDING_DIMENSIONS=1024 exceeds max_dimensions=384 
+    for dense embedder 'local_minilm'.
+    ```
+    
+    **Solution**: Use correct dimensions for your model:
+    - OpenAI small: up to 1536
+    - OpenAI large: up to 3072
+    - Mistral: exactly 1024
+    - Local: exactly 384
+  </Accordion>
+
+  <Accordion title="Error: Cannot change dimensions">
+    **Symptom**:
+    ```
+    EmbeddingConfigError: Embedding config mismatch: embedding_dimensions: 
+    code=1024, db=1536. Changing embedding model or dimensions makes all 
+    synced data unsearchable.
+    ```
+    
+    **Solution**: You have two options:
+    1. **Revert**: Change `.env` back to original dimensions (1536)
+    2. **Re-index**: Delete all data and re-sync:
+       ```bash
+       docker compose down --volumes
+       ./start.sh
+       # Re-create collections and sync
+       ```
+  </Accordion>
+
+  <Accordion title="Error: Local embeddings not responding">
+    **Symptom**:
+    ```
+    EmbedderConnectionError: Local embedding connection failed: 
+    [Errno 111] Connection refused
+    ```
+    
+    **Solution**:
+    1. Ensure local embeddings container is running:
+       ```bash
+       docker ps | grep text2vec
+       ```
+    2. Check health:
+       ```bash
+       curl http://localhost:9878/health
+       ```
+    3. Restart if needed:
+       ```bash
+       docker compose restart text2vec-transformers
+       ```
+  </Accordion>
+
+  <Accordion title="Rate limit errors">
+    **Symptom**:
+    ```
+    EmbedderRateLimitError: OpenAI rate limit exceeded, retry after 30.0s
+    ```
+    
+    **Solutions**:
+    - **Reduce concurrency**: Lower `_MAX_CONCURRENT_REQUESTS` in embedder
+    - **Upgrade tier**: Increase OpenAI rate limits
+    - **Switch models**: Use Mistral or local embeddings
+    - **Wait**: Airweave automatically retries with backoff
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Chunking" icon="scissors" href="/chunking">
+  Configure document chunking before embedding
+</Card>
+
+<Card title="Search API" icon="magnifying-glass" href="/search">
+  Use embeddings in hybrid search queries
+</Card>
+
+<Card title="Configuration" icon="gear" href="/deployment/configuration">
+  See all embedding environment variables
+</Card>
+
+<Card title="Rate Limits" icon="gauge-high" href="/rate-limits">
+  Configure source API rate limiting
+</Card>
+
+</CardGroup>

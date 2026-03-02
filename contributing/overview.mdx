@@ -1,0 +1,395 @@
+---
+title: Contributing Overview
+description: Get started contributing to Airweave, the open-source context retrieval layer for AI agents
+---
+
+Thank you for your interest in contributing to Airweave! This guide will help you get set up and understand how you can contribute to the project.
+
+## What is Airweave?
+
+Airweave is an open-source context retrieval layer for AI agents that connects to various data sources, indexes content, and makes it searchable through a unified API. The most common contribution is adding new connectors to expand the range of data sources Airweave can access.
+
+## Ways to Contribute
+
+<CardGroup cols={2}>
+  <Card title="Add a Connector" icon="plug" href="/contributing/add-connector">
+    Build a new source integration to connect Airweave to your favorite tool or API
+  </Card>
+  <Card title="Fix Bugs" icon="bug">
+    Help improve stability by fixing issues and improving error handling
+  </Card>
+  <Card title="Improve Documentation" icon="book">
+    Help others by improving guides, adding examples, or fixing typos
+  </Card>
+  <Card title="Optimize Performance" icon="gauge-high">
+    Enhance sync speed, reduce memory usage, or improve search relevance
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### Prerequisites
+
+Before you begin, ensure you have:
+
+- **Docker & Docker Compose** - For running the complete stack
+- **Python 3.11+** - For backend development
+- **Node.js 20+** - For frontend development (optional)
+- **Git** - For version control
+- **[Cursor](https://www.cursor.com/)** - Recommended IDE with AI assistance (optional but helpful)
+
+### Development Setup
+
+<Steps>
+  <Step title="Fork and clone the repository">
+    Fork the repository on GitHub, then clone your fork:
+
+    ```bash
+    git clone https://github.com/YOUR-USERNAME/airweave.git
+    cd airweave
+    ```
+
+    Add the upstream repository as a remote:
+
+    ```bash
+    git remote add upstream https://github.com/airweave-ai/airweave.git
+    ```
+  </Step>
+
+  <Step title="Install pre-commit hooks">
+    Set up pre-commit hooks to ensure code quality:
+
+    ```bash
+    pip install pre-commit
+    pre-commit install
+    ```
+
+    This automatically runs linting and formatting checks before each commit.
+  </Step>
+
+  <Step title="Start the development environment">
+    Use the startup script to launch all services:
+
+    ```bash
+    ./start.sh
+    ```
+
+    This will:
+    - Start PostgreSQL, Qdrant, Temporal, and Redis via Docker
+    - Initialize the database
+    - Launch the FastAPI backend
+    - Start the React frontend (optional)
+  </Step>
+
+  <Step title="Verify the setup">
+    Check that Airweave is running:
+
+    - Backend API: http://localhost:8001
+    - Frontend: http://localhost:3000
+    - API docs: http://localhost:8001/docs
+  </Step>
+</Steps>
+
+<Note>
+For day-to-day development, use VS Code launch configurations instead of `./start.sh`. See the "Development Workflow" section below.
+</Note>
+
+## Development Workflow
+
+### Using VS Code Launch Configurations
+
+For efficient development, use the provided VS Code configurations:
+
+1. Open the project in VS Code
+2. Go to the "Run and Debug" view (Ctrl+Shift+D or Cmd+Shift+D)
+3. Select a configuration:
+   - **FastAPI** - Run the backend server
+   - **Debug React** - Run the frontend with debugging
+   - **FastAPI + ARQ Worker** - Full stack development
+   - **Pytest Debug** - Run and debug tests
+
+### Creating a Feature Branch
+
+Create a new branch for your changes:
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+Branch naming conventions:
+- `feature/` - New features or connectors
+- `fix/` - Bug fixes
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring
+
+### Making Changes
+
+1. Make your changes following the coding standards (see below)
+2. Run tests to ensure nothing breaks
+3. Commit your changes with a descriptive message
+
+```bash
+git add .
+git commit -m "feat(sources): add support for MyApp API"
+```
+
+### Commit Message Format
+
+Follow the conventional commit format:
+
+```
+type(scope): short summary
+
+Optional longer description explaining the changes
+```
+
+**Types:**
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation changes
+- `style` - Code style changes (formatting)
+- `refactor` - Code refactoring
+- `test` - Adding or updating tests
+- `chore` - Maintenance tasks
+
+**Examples:**
+```bash
+feat(sources): add Notion connector with page and database support
+fix(sync): handle rate limiting for concurrent requests
+docs(contributing): add examples for connector development
+```
+
+## Coding Standards
+
+### Backend (Python)
+
+- **Linting & Formatting**: We use [Ruff](https://github.com/astral-sh/ruff) for both linting and formatting
+- **Type Hints**: Use type annotations for all function parameters and return values
+- **Docstrings**: Add docstrings to classes and public methods
+- **Async/Await**: Use async functions for I/O operations
+
+Pre-commit hooks will automatically check your code. You can also run manually:
+
+```bash
+cd backend
+ruff check .      # Check for issues
+ruff format .     # Auto-format code
+```
+
+### Frontend (TypeScript)
+
+- **Linting**: We use ESLint with TypeScript support
+- **Formatting**: Prettier for consistent code style
+- **Type Safety**: Leverage TypeScript's type system
+
+Run checks:
+
+```bash
+cd frontend
+npm run lint
+npm run format
+```
+
+## Testing
+
+### Backend Tests
+
+Run the test suite:
+
+```bash
+cd backend
+pytest
+```
+
+Run specific tests:
+
+```bash
+pytest tests/test_sources.py
+pytest -k "test_slack"  # Run tests matching pattern
+```
+
+Use VS Code's "Pytest Debug" configuration to debug tests.
+
+### Integration Tests with Monke
+
+For end-to-end connector testing, we use **Monke** - our integration testing framework:
+
+```bash
+cd monke
+
+# Test a specific connector
+./monke.sh github
+
+# Test multiple connectors
+./monke.sh github notion asana
+
+# Test all connectors
+./monke.sh --all
+```
+
+Monke creates real test data in external systems, syncs it through Airweave, and verifies the results. See the [Monke README](https://github.com/airweave-ai/airweave/tree/main/monke) for details.
+
+## Submitting Your Contribution
+
+<Steps>
+  <Step title="Update your fork">
+    Ensure your fork is up to date with the main repository:
+
+    ```bash
+    git fetch upstream
+    git merge upstream/main
+    ```
+  </Step>
+
+  <Step title="Push your changes">
+    Push your branch to your fork:
+
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+
+  <Step title="Open a pull request">
+    1. Go to the [Airweave repository](https://github.com/airweave-ai/airweave)
+    2. Click "New Pull Request"
+    3. Select your fork and branch
+    4. Fill out the PR template with:
+       - Clear description of changes
+       - Link to related issues
+       - Testing approach
+       - Screenshots (if UI changes)
+  </Step>
+
+  <Step title="Respond to feedback">
+    Maintainers will review your PR and may request changes. Address feedback by:
+
+    1. Making the requested changes
+    2. Committing and pushing updates
+    3. Responding to comments
+
+    The PR will automatically update with your new commits.
+  </Step>
+</Steps>
+
+## Code Review Process
+
+What to expect during review:
+
+1. **Automated Checks** - CI/CD runs tests and linting automatically
+2. **Maintainer Review** - Core team reviews code quality and design
+3. **Testing Verification** - Ensures tests pass and cover new code
+4. **Documentation Check** - Verifies docs are updated if needed
+
+<Note>
+Most PRs are reviewed within 2-3 business days. Large changes may take longer.
+</Note>
+
+## Development Tips
+
+### Using Cursor for Connector Development
+
+Cursor AI can significantly speed up connector development:
+
+1. **Add API docs to Cursor**
+   - Go to Cursor Settings → Features → Docs → Add New Doc
+   - Add the API reference URL for your source (e.g., https://docs.github.com/rest)
+
+2. **Reference the connector guide**
+   ```
+   @connector-development-end-to-end.mdc
+   ```
+
+3. **Let Cursor generate boilerplate**
+   ```
+   Write the source integration for MyApp with (@myapp-docs) 
+   and @connector-development-end-to-end.mdc
+   ```
+
+4. **Use local MCP testing** (optional)
+   - Set `LOCAL_CURSOR_DEVELOPMENT=true` in `.env`
+   - Run `python .cursor/mcp/sync_test/server.py`
+   - Configure MCP in Cursor Settings
+
+See the [MCP README](https://github.com/airweave-ai/airweave/blob/main/.cursor/mcp/sync_test/README.md) for details.
+
+### Common Development Tasks
+
+**Add a new Python dependency:**
+```bash
+cd backend
+poetry add package-name
+```
+
+**Update the database schema:**
+```bash
+cd backend
+alembic revision --autogenerate -m "Add new table"
+alembic upgrade head
+```
+
+**Clear the vector database:**
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+## Project Structure
+
+Understanding the codebase layout:
+
+```
+airweave/
+├── backend/                    # Python FastAPI backend
+│   ├── airweave/
+│   │   ├── api/               # REST API endpoints
+│   │   ├── core/              # Core business logic
+│   │   ├── platform/          # Connectors & sync engine
+│   │   │   ├── sources/       # Source connectors
+│   │   │   ├── entities/      # Entity schemas
+│   │   │   ├── configs/       # Config & auth schemas
+│   │   │   ├── sync/          # Sync orchestration
+│   │   │   └── destinations/  # Vector store adapters
+│   │   ├── domains/           # Domain logic (refactored)
+│   │   ├── models/            # Database models
+│   │   └── schemas/           # Pydantic schemas
+│   └── tests/                 # Backend tests
+├── frontend/                   # React/TypeScript frontend
+├── monke/                      # Integration testing framework
+└── docker-compose.yml          # Local development stack
+```
+
+See [Architecture](/contributing/architecture) for a detailed system overview.
+
+## Getting Help
+
+If you need assistance:
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.com/invite/484HY9Ehxt">
+    Join our Discord for real-time help and discussions
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/airweave-ai/airweave/issues">
+    Search existing issues or open a new one
+  </Card>
+  <Card title="GitHub Discussions" icon="comments" href="https://github.com/airweave-ai/airweave/discussions">
+    Ask questions and share ideas
+  </Card>
+  <Card title="Documentation" icon="book" href="/">
+    Browse the full documentation
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Ready to contribute?
+
+<CardGroup cols={2}>
+  <Card title="Add a Connector" icon="plus" href="/contributing/add-connector">
+    Step-by-step guide to building a new source integration
+  </Card>
+  <Card title="Explore Architecture" icon="diagram-project" href="/contributing/architecture">
+    Understand how Airweave works under the hood
+  </Card>
+</CardGroup>
+
+Thank you for contributing to Airweave! 🎉

@@ -1,0 +1,295 @@
+---
+title: 'Webhook Subscriptions'
+description: 'Manage webhook subscriptions for real-time event notifications'
+---
+
+## Overview
+
+Webhook subscriptions allow you to receive real-time notifications when events occur in Airweave. When you create a subscription, you specify:
+
+- **URL**: The HTTPS endpoint where events will be delivered
+- **Event Types**: Which events you want to receive (e.g., `sync.completed`, `sync.failed`)
+- **Secret** (optional): A custom signing secret for verifying webhook signatures
+
+After creation, Airweave will send HTTP POST requests to your URL whenever matching events occur.
+
+## List Subscriptions
+
+<ParamField method="GET" path="/v1/webhooks/subscriptions">
+  List all webhook subscriptions for your organization
+</ParamField>
+
+### Response
+
+Returns an array of subscription objects.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier for this subscription
+</ResponseField>
+
+<ResponseField name="url" type="string" required>
+  The URL where webhook events are delivered
+</ResponseField>
+
+<ResponseField name="filter_types" type="array">
+  Event types this subscription receives
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean" required>
+  Whether this subscription is currently disabled
+</ResponseField>
+
+<ResponseField name="health_status" type="string" required>
+  Health status: `healthy`, `degraded`, `failing`, or `unknown`
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp when created
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 timestamp when last updated
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl https://api.airweave.ai/v1/webhooks/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Get Subscription
+
+<ParamField method="GET" path="/v1/webhooks/subscriptions/{subscription_id}">
+  Retrieve a specific webhook subscription with its recent delivery attempts
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="subscription_id" type="string" required>
+  UUID of the subscription to retrieve
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="include_secret" type="boolean" default={false}>
+  Include the signing secret for webhook signature verification
+</ParamField>
+
+### Response
+
+Returns a subscription object with delivery attempts.
+
+<ResponseField name="delivery_attempts" type="array">
+  Recent delivery attempts for this subscription
+</ResponseField>
+
+<ResponseField name="secret" type="string">
+  Signing secret (only included when `include_secret=true`)
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl "https://api.airweave.ai/v1/webhooks/subscriptions/550e8400-e29b-41d4-a716-446655440000?include_secret=true" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Create Subscription
+
+<ParamField method="POST" path="/v1/webhooks/subscriptions">
+  Create a new webhook subscription
+</ParamField>
+
+### Request Body
+
+<ParamField body="url" type="string" required>
+  The HTTPS URL where webhook events will be delivered
+  
+  Must be a publicly accessible endpoint that returns a 2xx status code.
+</ParamField>
+
+<ParamField body="event_types" type="array" required>
+  List of event types to subscribe to
+  
+  Available types:
+  - `sync.pending`
+  - `sync.running`
+  - `sync.completed`
+  - `sync.failed`
+  - `sync.cancelled`
+  - `source_connection.created`
+  - `source_connection.auth_completed`
+  - `source_connection.deleted`
+  - `collection.created`
+  - `collection.updated`
+  - `collection.deleted`
+</ParamField>
+
+<ParamField body="secret" type="string">
+  Optional custom signing secret for webhook signature verification (min 24 characters)
+  
+  If not provided, a secure secret will be auto-generated.
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/webhooks/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://api.mycompany.com/webhooks/airweave",
+    "event_types": ["sync.completed", "sync.failed"]
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/webhooks/subscriptions"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "url": "https://api.mycompany.com/webhooks/airweave",
+    "event_types": ["sync.completed", "sync.failed"]
+}
+
+response = requests.post(url, headers=headers, json=data)
+subscription = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/webhooks/subscriptions';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  url: 'https://api.mycompany.com/webhooks/airweave',
+  event_types: ['sync.completed', 'sync.failed']
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+const subscription = await response.json();
+```
+
+</CodeGroup>
+
+---
+
+## Update Subscription
+
+<ParamField method="PATCH" path="/v1/webhooks/subscriptions/{subscription_id}">
+  Update an existing webhook subscription
+</ParamField>
+
+### Request Body
+
+All fields are optional. Only include fields you want to change.
+
+<ParamField body="url" type="string">
+  New URL for webhook delivery
+</ParamField>
+
+<ParamField body="event_types" type="array">
+  New list of event types (replaces existing list)
+</ParamField>
+
+<ParamField body="disabled" type="boolean">
+  Set to `true` to pause delivery, `false` to resume
+</ParamField>
+
+<ParamField body="recover_since" type="string">
+  When re-enabling (`disabled: false`), optionally recover failed messages from this timestamp (ISO 8601)
+</ParamField>
+
+### Example Request
+
+```bash Disable Subscription
+curl -X PATCH https://api.airweave.ai/v1/webhooks/subscriptions/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"disabled": true}'
+```
+
+---
+
+## Delete Subscription
+
+<ParamField method="DELETE" path="/v1/webhooks/subscriptions/{subscription_id}">
+  Permanently delete a webhook subscription
+</ParamField>
+
+<Warning>
+Once deleted, Airweave will stop sending events to this endpoint immediately. This action cannot be undone.
+</Warning>
+
+### Path Parameters
+
+<ParamField path="subscription_id" type="string" required>
+  UUID of the subscription to delete
+</ParamField>
+
+### Example Request
+
+```bash cURL
+curl -X DELETE https://api.airweave.ai/v1/webhooks/subscriptions/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Recover Failed Messages
+
+<ParamField method="POST" path="/v1/webhooks/subscriptions/{subscription_id}/recover">
+  Retry failed message deliveries for a webhook subscription
+</ParamField>
+
+### Request Body
+
+<ParamField body="since" type="string" required>
+  Start of the recovery time window (ISO 8601)
+  
+  All failed messages from this time onward will be retried.
+</ParamField>
+
+<ParamField body="until" type="string">
+  End of the recovery time window (ISO 8601)
+  
+  If not specified, recovers all failed messages up to now.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for this recovery task
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Recovery task status: `running` or `completed`
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/webhooks/subscriptions/550e8400-e29b-41d4-a716-446655440000/recover \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "since": "2024-03-14T00:00:00Z",
+    "until": "2024-03-15T00:00:00Z"
+  }'
+```

@@ -1,0 +1,77 @@
+---
+title: SharePoint
+description: Connect SharePoint to Airweave to sync sites, libraries, and files
+---
+
+Connect SharePoint to Airweave to make your enterprise content searchable by AI agents.
+
+## What Gets Synced
+
+The SharePoint connector syncs:
+
+- **Sites** - SharePoint sites and subsites
+- **Drives** - Document libraries
+- **Files** - Documents and files
+- **Lists** - SharePoint lists and items
+- **Pages** - Site pages
+- **Users and Groups** - Permissions and membership
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication via Microsoft Graph API.
+
+## Setup
+
+<Steps>
+  <Step title="Add SharePoint Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **SharePoint**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and sign in with your Microsoft 365 account.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your SharePoint content.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### SharePoint Sites
+
+Site collections and subsites.
+
+**Key fields:**
+- Site name and description
+- Web URL
+- Site collection info
+
+### SharePoint Files
+
+Documents in libraries.
+
+**Key fields:**
+- File name and path
+- MIME type
+- Created/modified by
+- Parent site and drive
+
+### SharePoint Lists
+
+Custom lists and their items.
+
+**Key fields:**
+- List name and description
+- Field values (dynamic schema)
+- Associated site
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/sharepoint.py"
+>
+  Explore the SharePoint connector implementation on GitHub
+</Card>

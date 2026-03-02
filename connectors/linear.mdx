@@ -1,0 +1,81 @@
+---
+title: Linear
+description: Connect Linear to Airweave to sync issues, projects, and teams
+---
+
+Connect Linear to Airweave to make your product development workflow searchable by AI agents.
+
+## What Gets Synced
+
+The Linear connector syncs:
+
+- **Teams** - Team metadata and hierarchies
+- **Projects** - Project status and roadmaps
+- **Issues** - All issue types with full context
+- **Comments** - Issue discussions
+- **Users** - Team member information
+- **Attachments** - Files and links attached to issues
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication via Linear's GraphQL API.
+
+## Setup
+
+<Steps>
+  <Step title="Add Linear Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Linear**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Linear workspace.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Linear data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Linear Issues
+
+Issues with identifiers like ENG-123.
+
+**Key fields:**
+- Identifier and title
+- Description and state
+- Priority and due date
+- Assignee and team
+- Project association
+
+### Linear Projects
+
+Projects with roadmap and progress data.
+
+**Key fields:**
+- Project name and slug
+- Description and state
+- Target dates and progress
+- Team associations
+- Project lead
+
+### Linear Teams
+
+Team organization and metadata.
+
+**Key fields:**
+- Team name and key
+- Description and icon
+- Parent team relationships
+- Issue count
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/linear.py"
+>
+  Explore the Linear connector implementation on GitHub
+</Card>

@@ -1,0 +1,95 @@
+---
+title: Gmail
+description: Connect Gmail to Airweave to sync email messages
+---
+
+Connect Gmail to Airweave to make your email searchable by AI agents.
+
+## What Gets Synced
+
+The Gmail connector syncs:
+
+- **Threads** - Email conversation threads
+- **Messages** - Individual email messages
+- **Attachments** - File attachments
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials.
+
+## Configuration
+
+### After Date (Required)
+
+Sync emails after this date (format: `YYYY/MM/DD` or `YYYY-MM-DD`).
+
+### Included Labels (Optional)
+
+Labels to include (e.g., `inbox`, `sent`, `important`). Defaults to inbox and sent.
+
+### Excluded Labels (Optional)
+
+Labels to exclude (e.g., `spam`, `trash`). Defaults to spam and trash.
+
+### Gmail Query (Optional)
+
+Advanced: Custom Gmail query string (overrides other filters).
+
+## Setup
+
+<Steps>
+  <Step title="Create Google Cloud OAuth App">
+    1. Create a Google Cloud project
+    2. Enable the Gmail API
+    3. Configure OAuth consent screen
+    4. Add scope: `https://www.googleapis.com/auth/gmail.readonly`
+    5. Create OAuth credentials
+  </Step>
+  
+  <Step title="Add Gmail Connection">
+    In Airweave, enter:
+    - Client ID and Client Secret
+    - After date (e.g., `2024/01/01`)
+    - Optional: Include/exclude labels
+  </Step>
+  
+  <Step title="Authorize Access">
+    Complete OAuth flow to grant access.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Gmail Messages
+
+Email messages with full content.
+
+**Key fields:**
+- Subject and sender
+- To, CC, BCC recipients
+- Sent/received timestamps
+- Labels
+- Snippet
+
+### Gmail Attachments
+
+File attachments.
+
+**Key fields:**
+- Filename
+- Associated message and thread
+- Attachment ID
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/gmail.py"
+>
+  Explore the Gmail connector implementation on GitHub
+</Card>
+
+<Note>
+For detailed setup instructions with screenshots, see the source documentation in the GitHub repository.
+</Note>

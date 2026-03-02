@@ -1,0 +1,269 @@
+---
+title: 'Create Source Connection'
+api: 'POST /v1/source-connections'
+description: 'Create a new source connection to sync data from an external source'
+---
+
+## Overview
+
+Create a new source connection to sync data from an external source. The authentication method determines the creation flow:
+
+- **Direct**: Provide credentials (API key, token) directly. Connection is created immediately.
+- **OAuth Browser**: Returns a connection with an `auth_url` to redirect users for authentication.
+- **OAuth Token**: Provide an existing OAuth token. Connection is created immediately.
+- **Auth Provider**: Use a pre-configured auth provider (e.g., Composio, Pipedream).
+
+After successful authentication, data sync can begin automatically or on-demand.
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name for the connection (4-42 characters)
+  
+  If not provided, defaults to the source name with "Connection" appended
+  
+  Example: "My GitHub Connection"
+</ParamField>
+
+<ParamField body="short_name" type="string" required>
+  Source type identifier (e.g., 'slack', 'github', 'notion')
+</ParamField>
+
+<ParamField body="readable_collection_id" type="string" required>
+  The readable ID of the collection to add this connection to
+  
+  Example: "customer-support-tickets-x7k9m"
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description of what this connection is used for (max 255 characters)
+</ParamField>
+
+<ParamField body="config" type="object">
+  Source-specific configuration (e.g., repository name, filters)
+  
+  <Expandable title="example">
+    ```json
+    {
+      "repo_name": "airweave-ai/airweave",
+      "branch": "main"
+    }
+    ```
+  </Expandable>
+</ParamField>
+
+<ParamField body="authentication" type="object">
+  Authentication configuration (type auto-detected from provided fields)
+  
+  <Expandable title="Direct Auth">
+    <ParamField body="credentials" type="object" required>
+      Authentication credentials (e.g., API key, token)
+      
+      Example: `{"personal_access_token": "ghp_xxxxx"}`
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="OAuth Token">
+    <ParamField body="access_token" type="string" required>
+      OAuth access token
+    </ParamField>
+    
+    <ParamField body="refresh_token" type="string">
+      OAuth refresh token
+    </ParamField>
+    
+    <ParamField body="expires_at" type="string">
+      Token expiry time (ISO 8601)
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="OAuth Browser">
+    <ParamField body="redirect_uri" type="string">
+      OAuth redirect URI
+    </ParamField>
+    
+    <ParamField body="client_id" type="string">
+      OAuth2 client ID (for BYOC)
+    </ParamField>
+    
+    <ParamField body="client_secret" type="string">
+      OAuth2 client secret (for BYOC)
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="Auth Provider">
+    <ParamField body="provider_readable_id" type="string" required>
+      Auth provider readable ID
+    </ParamField>
+    
+    <ParamField body="provider_config" type="object">
+      Provider-specific configuration
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="schedule" type="object">
+  Optional sync schedule configuration
+  
+  <Expandable title="properties">
+    <ParamField body="cron" type="string">
+      Cron expression for scheduled syncs
+    </ParamField>
+    
+    <ParamField body="continuous" type="boolean" default={false}>
+      Enable continuous sync mode
+    </ParamField>
+    
+    <ParamField body="cursor_field" type="string">
+      Field for incremental sync
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sync_immediately" type="boolean">
+  Run initial sync after creation
+  
+  Defaults to `true` for direct/token/auth_provider, `false` for OAuth flows
+</ParamField>
+
+<ParamField body="redirect_url" type="string">
+  URL to redirect to after OAuth flow completes (only for OAuth flows)
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the created connection
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name
+</ResponseField>
+
+<ResponseField name="short_name" type="string" required>
+  Source type identifier
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current status (e.g., `PENDING_AUTH`, `ACTIVE`, `SYNCING`)
+</ResponseField>
+
+<ResponseField name="auth" type="object" required>
+  Authentication details including `auth_url` for OAuth flows
+</ResponseField>
+
+## Example Requests
+
+<CodeGroup>
+
+```bash Direct Auth (GitHub)
+curl -X POST https://api.airweave.ai/v1/source-connections \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "GitHub Docs Repo",
+    "short_name": "github",
+    "readable_collection_id": "documentation-ab123",
+    "config": {
+      "repo_name": "company/docs",
+      "branch": "main"
+    },
+    "authentication": {
+      "credentials": {
+        "personal_access_token": "ghp_xxxxxxxxxxxx"
+      }
+    }
+  }'
+```
+
+```python OAuth Browser (Slack)
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "name": "Slack Workspace",
+    "short_name": "slack",
+    "readable_collection_id": "team-comms-xy789",
+    "redirect_url": "https://app.example.com/connections"
+}
+
+response = requests.post(url, headers=headers, json=data)
+connection = response.json()
+
+# Redirect user to connection['auth']['auth_url']
+```
+
+```typescript Auth Provider
+const url = 'https://api.airweave.ai/v1/source-connections';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  name: 'Gmail via Composio',
+  short_name: 'gmail',
+  readable_collection_id: 'emails-cd456',
+  authentication: {
+    provider_readable_id: 'composio-abc123'
+  }
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+const connection = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response (Direct Auth)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "GitHub Docs Repo",
+  "short_name": "github",
+  "readable_collection_id": "documentation-ab123",
+  "status": "SYNCING",
+  "auth": {
+    "method": "direct",
+    "authenticated": true,
+    "authenticated_at": "2024-03-15T09:30:00Z"
+  },
+  "config": {
+    "repo_name": "company/docs",
+    "branch": "main"
+  },
+  "created_at": "2024-03-15T09:30:00Z",
+  "modified_at": "2024-03-15T09:30:00Z"
+}
+```
+
+## Example Response (OAuth Browser)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "Slack Workspace",
+  "short_name": "slack",
+  "readable_collection_id": "team-comms-xy789",
+  "status": "PENDING_AUTH",
+  "auth": {
+    "method": "oauth_browser",
+    "authenticated": false,
+    "auth_url": "https://api.airweave.ai/v1/source-connections/authorize/abc123",
+    "auth_url_expires": "2024-03-15T10:00:00Z",
+    "redirect_url": "https://app.example.com/connections"
+  },
+  "created_at": "2024-03-15T09:30:00Z",
+  "modified_at": "2024-03-15T09:30:00Z"
+}
+```

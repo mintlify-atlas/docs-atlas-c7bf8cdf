@@ -1,0 +1,526 @@
+---
+title: 'Source Connections'
+description: 'Create and manage authenticated connections to your data sources'
+---
+
+Source connections are authenticated instances of sources that sync data into collections. They represent the actual link between external platforms and your Airweave collections.
+
+## What is a Source Connection?
+
+A **source connection** is a configured, authenticated instance of a source. It includes:
+- **Credentials** for accessing the external platform
+- **Configuration** specifying what data to sync
+- **Sync schedule** for automatic data updates
+- **Sync history** tracking jobs and their status
+
+For example, a GitHub source connection might be configured to sync the `airweave-ai/airweave` repository on the `main` branch, with a daily sync schedule.
+
+## Creating Source Connections
+
+The authentication method determines the creation flow. Airweave supports four authentication methods:
+
+### Direct Authentication
+
+Provide credentials (API key, token) directly. The connection is created immediately and ready to sync.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/source-connections \
+  -H "Authorization: Bearer $AIRWEAVE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Airweave Docs Repo",
+    "short_name": "github",
+    "readable_collection_id": "technical-docs-a8x2k",
+    "config": {
+      "repo_name": "airweave-ai/airweave",
+      "branch": "main"
+    },
+    "auth": {
+      "direct": {
+        "credentials": {
+          "personal_access_token": "ghp_abc123..."
+        }
+      }
+    },
+    "sync_immediately": true
+  }'
+```
+
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+connection = client.source_connections.create(
+    name="Airweave Docs Repo",
+    short_name="github",
+    readable_collection_id="technical-docs-a8x2k",
+    config={
+        "repo_name": "airweave-ai/airweave",
+        "branch": "main"
+    },
+    auth={
+        "direct": {
+            "credentials": {
+                "personal_access_token": "ghp_abc123..."
+            }
+        }
+    },
+    sync_immediately=True
+)
+
+print(f"Created connection: {connection.id}")
+print(f"Status: {connection.status}")
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+
+const connection = await client.sourceConnections.create({
+  name: 'Airweave Docs Repo',
+  shortName: 'github',
+  readableCollectionId: 'technical-docs-a8x2k',
+  config: {
+    repoName: 'airweave-ai/airweave',
+    branch: 'main'
+  },
+  auth: {
+    direct: {
+      credentials: {
+        personalAccessToken: 'ghp_abc123...'
+      }
+    }
+  },
+  syncImmediately: true
+});
+
+console.log(`Created connection: ${connection.id}`);
+console.log(`Status: ${connection.status}`);
+```
+</CodeGroup>
+
+### OAuth Browser Flow
+
+Authenticate users via browser redirect. Returns a connection with an `auth_url` to redirect users for authentication.
+
+<CodeGroup>
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+# Step 1: Create connection with OAuth browser auth
+connection = client.source_connections.create(
+    name="My Notion Workspace",
+    short_name="notion",
+    readable_collection_id="team-wiki-x9k2m",
+    auth={
+        "oauth_browser": {
+            "redirect_uri": "https://myapp.com/oauth/callback"
+        }
+    },
+    sync_immediately=False  # Don't sync until OAuth completes
+)
+
+print(f"Auth URL: {connection.auth.auth_url}")
+# Redirect user to connection.auth.auth_url
+
+# Step 2: After OAuth callback, check connection status
+connection = client.source_connections.get(connection.id)
+if connection.status == "active":
+    # OAuth completed successfully
+    # Trigger initial sync
+    job = client.source_connections.run(connection.id)
+    print(f"Sync job started: {job.id}")
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+
+// Step 1: Create connection with OAuth browser auth
+const connection = await client.sourceConnections.create({
+  name: 'My Notion Workspace',
+  shortName: 'notion',
+  readableCollectionId: 'team-wiki-x9k2m',
+  auth: {
+    oauthBrowser: {
+      redirectUri: 'https://myapp.com/oauth/callback'
+    }
+  },
+  syncImmediately: false  // Don't sync until OAuth completes
+});
+
+console.log(`Auth URL: ${connection.auth.authUrl}`);
+// Redirect user to connection.auth.authUrl
+
+// Step 2: After OAuth callback, check connection status
+const updatedConnection = await client.sourceConnections.get(connection.id);
+if (updatedConnection.status === 'active') {
+  // OAuth completed successfully
+  // Trigger initial sync
+  const job = await client.sourceConnections.run(connection.id);
+  console.log(`Sync job started: ${job.id}`);
+}
+```
+</CodeGroup>
+
+<Note>
+The OAuth callback endpoint at `/v1/source-connections/callback` handles the redirect from the OAuth provider and completes the authentication flow. After successful authentication, users are redirected to your `redirect_uri` with query parameters `status=success` and `source_connection_id={id}`.
+</Note>
+
+### OAuth Token
+
+Provide a pre-obtained OAuth access token. Useful when you've already authenticated the user.
+
+```python
+connection = client.source_connections.create(
+    name="My Slack Workspace",
+    short_name="slack",
+    readable_collection_id="team-messages-k3x9m",
+    auth={
+        "oauth_token": {
+            "access_token": "xoxb-1234567890-...",
+            "expires_at": "2026-12-31T23:59:59Z"  # Optional
+        }
+    },
+    sync_immediately=True
+)
+```
+
+### Auth Provider
+
+Use a third-party auth provider (Composio, Pipedream) for authentication. The provider handles OAuth flows and credential management.
+
+```python
+connection = client.source_connections.create(
+    name="Salesforce CRM",
+    short_name="salesforce",
+    readable_collection_id="customer-data-m8x1k",
+    auth={
+        "auth_provider": {
+            "provider_readable_id": "composio-prod-x7k9m",
+            "provider_config": {
+                "entity_id": "user-123"
+            }
+        }
+    },
+    sync_immediately=True
+)
+```
+
+## Source Connection Lifecycle
+
+<Steps>
+  <Step title="Create">
+    Create a source connection with authentication and configuration
+  </Step>
+  
+  <Step title="Authenticate">
+    Complete OAuth flow if using browser-based authentication
+  </Step>
+  
+  <Step title="Sync">
+    Trigger manual sync or configure automatic schedule
+  </Step>
+  
+  <Step title="Monitor">
+    Track sync jobs and view entity statistics
+  </Step>
+  
+  <Step title="Update">
+    Modify configuration or credentials as needed
+  </Step>
+  
+  <Step title="Delete">
+    Remove connection and optionally clean up synced data
+  </Step>
+</Steps>
+
+## Listing Connections
+
+Retrieve all source connections in your organization:
+
+<CodeGroup>
+```bash cURL
+curl https://api.airweave.ai/v1/source-connections \
+  -H "Authorization: Bearer $AIRWEAVE_API_KEY"
+```
+
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+# List all connections
+connections = client.source_connections.list()
+
+for conn in connections:
+    print(f"{conn.name} ({conn.short_name})")
+    print(f"  Status: {conn.status}")
+    print(f"  Collection: {conn.readable_collection_id}")
+    print(f"  Entities: {conn.entity_count}")
+
+# Filter by collection
+docs_connections = client.source_connections.list(
+    collection="technical-docs-a8x2k"
+)
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+
+// List all connections
+const connections = await client.sourceConnections.list();
+
+connections.forEach(conn => {
+  console.log(`${conn.name} (${conn.shortName})`);
+  console.log(`  Status: ${conn.status}`);
+  console.log(`  Collection: ${conn.readableCollectionId}`);
+  console.log(`  Entities: ${conn.entityCount}`);
+});
+
+// Filter by collection
+const docsConnections = await client.sourceConnections.list({
+  collection: 'technical-docs-a8x2k'
+});
+```
+</CodeGroup>
+
+## Getting Connection Details
+
+Retrieve full details of a specific connection:
+
+```python
+connection = client.source_connections.get(
+    "550e8400-e29b-41d4-a716-446655440000"
+)
+
+print(f"Name: {connection.name}")
+print(f"Source: {connection.short_name}")
+print(f"Status: {connection.status}")
+print(f"Collection: {connection.readable_collection_id}")
+print(f"Entities synced: {connection.entity_count}")
+print(f"Last sync: {connection.last_sync_at}")
+print(f"Created: {connection.created_at}")
+print(f"\nConfiguration:")
+for key, value in connection.config.items():
+    print(f"  {key}: {value}")
+```
+
+## Running Syncs
+
+Trigger a data synchronization job:
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/source-connections/{id}/run \
+  -H "Authorization: Bearer $AIRWEAVE_API_KEY"
+```
+
+```python Python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+# Trigger sync
+job = client.source_connections.run(
+    source_connection_id="550e8400-e29b-41d4-a716-446655440000"
+)
+
+print(f"Job ID: {job.id}")
+print(f"Status: {job.status}")
+print(f"Started: {job.created_at}")
+
+# Force full sync (ignore cursor data)
+job = client.source_connections.run(
+    source_connection_id="550e8400-e29b-41d4-a716-446655440000",
+    force_full_sync=True
+)
+```
+
+```typescript TypeScript
+import { Airweave } from '@airweave/sdk';
+
+const client = new Airweave({ apiKey: 'your-api-key' });
+
+// Trigger sync
+const job = await client.sourceConnections.run(
+  '550e8400-e29b-41d4-a716-446655440000'
+);
+
+console.log(`Job ID: ${job.id}`);
+console.log(`Status: ${job.status}`);
+console.log(`Started: ${job.createdAt}`);
+
+// Force full sync (ignore cursor data)
+const fullSyncJob = await client.sourceConnections.run(
+  '550e8400-e29b-41d4-a716-446655440000',
+  { forceFullSync: true }
+);
+```
+</CodeGroup>
+
+The sync runs asynchronously in the background. Monitor progress using the jobs endpoint.
+
+## Monitoring Sync Jobs
+
+Retrieve sync job history and status:
+
+```python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+# Get recent jobs
+jobs = client.source_connections.get_jobs(
+    source_connection_id="550e8400-e29b-41d4-a716-446655440000",
+    limit=10
+)
+
+for job in jobs:
+    print(f"Job {job.id}")
+    print(f"  Status: {job.status}")
+    print(f"  Started: {job.created_at}")
+    print(f"  Completed: {job.completed_at}")
+    print(f"  Entities processed: {job.entities_created}")
+    if job.error_message:
+        print(f"  Error: {job.error_message}")
+```
+
+### Job Status Values
+
+- **PENDING**: Job is queued, waiting for worker
+- **RUNNING**: Sync is actively processing data
+- **COMPLETED**: Sync finished successfully
+- **FAILED**: Sync encountered an unrecoverable error
+- **CANCELLING**: Cancellation requested, worker is stopping
+- **CANCELLED**: Sync was cancelled and cleanup is scheduled
+
+## Updating Connections
+
+Modify connection configuration or credentials:
+
+```python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+# Update configuration
+connection = client.source_connections.update(
+    source_connection_id="550e8400-e29b-41d4-a716-446655440000",
+    name="Updated Docs Repo",
+    config={
+        "repo_name": "airweave-ai/airweave",
+        "branch": "develop"  # Changed from main to develop
+    },
+    schedule={
+        "cron": "0 0 * * *"  # Daily at midnight
+    }
+)
+
+print(f"Updated: {connection.name}")
+print(f"New branch: {connection.config['branch']}")
+```
+
+<Note>
+Only direct authentication credentials can be updated. For OAuth connections, delete and recreate the connection to re-authenticate.
+</Note>
+
+## Deleting Connections
+
+Permanently delete a source connection and all synced data:
+
+```python
+import airweave
+
+client = airweave.Client(api_key="your-api-key")
+
+deleted = client.source_connections.delete(
+    "550e8400-e29b-41d4-a716-446655440000"
+)
+
+print(f"Deleted: {deleted.name}")
+print(f"Entities removed: {deleted.entity_count}")
+```
+
+<Warning>
+**What gets deleted:**
+
+1. Any running sync is cancelled (API waits up to 15s for worker to stop)
+2. Source connection, sync config, job history, and entity metadata are cascade-deleted from the database
+3. A background cleanup workflow is scheduled to remove:
+   - Vector embeddings from the vector database (Vespa)
+   - Raw data from storage (ARF)
+
+The API returns immediately after step 2. Vector database cleanup happens asynchronously but data becomes unsearchable as soon as database records are deleted.
+
+**This action cannot be undone.**
+</Warning>
+
+## Sync Schedules
+
+Configure automatic syncs using cron expressions:
+
+```python
+connection = client.source_connections.create(
+    name="Daily Docs Sync",
+    short_name="github",
+    readable_collection_id="technical-docs-a8x2k",
+    config={"repo_name": "airweave-ai/airweave"},
+    auth={"direct": {"credentials": {"personal_access_token": "ghp_..."}}},
+    schedule={
+        "cron": "0 2 * * *",  # Daily at 2 AM UTC
+        "continuous": False,
+        "cursor_field": "last_repository_pushed_at"  # For incremental sync
+    },
+    sync_immediately=False
+)
+```
+
+### Common Cron Expressions
+
+- `0 * * * *` - Every hour
+- `0 */6 * * *` - Every 6 hours
+- `0 0 * * *` - Daily at midnight
+- `0 9 * * 1-5` - Weekdays at 9 AM
+- `0 0 * * 0` - Weekly on Sunday
+
+### Continuous Sync
+
+For sources that support it (e.g., GitHub), enable continuous sync mode:
+
+```python
+schedule={
+    "continuous": True,
+    "cursor_field": "last_repository_pushed_at"
+}
+```
+
+Continuous sync uses cursors to track sync progress and only processes new/changed data after the initial full sync.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browse Connectors" icon="grid" href="/connectors/overview">
+    Explore all 50+ available connectors
+  </Card>
+  
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn about auth methods and providers
+  </Card>
+  
+  <Card title="Collections" icon="folder" href="/collections">
+    Organize connections into collections
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference/source-connections/create">
+    See the full API specification
+  </Card>
+</CardGroup>

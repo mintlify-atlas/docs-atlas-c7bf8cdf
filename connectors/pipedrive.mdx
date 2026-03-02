@@ -1,0 +1,70 @@
+---
+title: Pipedrive
+description: Connect Pipedrive to Airweave to sync CRM data
+---
+
+Connect Pipedrive to Airweave to make your sales pipeline searchable by AI agents.
+
+## What Gets Synced
+
+The Pipedrive connector syncs:
+
+- **Persons** - Contacts
+- **Organizations** - Companies
+- **Deals** - Sales opportunities
+- **Activities** - Tasks, calls, meetings
+- **Products** - Product catalog
+- **Leads** - Lead management
+- **Notes** - Notes and comments
+
+## Authentication
+
+This connector uses **API Token** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Get Pipedrive API Token">
+    In Pipedrive, go to Settings → Personal preferences → API to find your API token.
+  </Step>
+  
+  <Step title="Add Pipedrive Connection">
+    In Airweave, click **Add Source** → **Pipedrive** and enter your API token.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Pipedrive data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Pipedrive Deals
+
+Sales opportunities with pipeline stage.
+
+**Key fields:**
+- Deal title and value
+- Stage and pipeline
+- Expected close date
+- Associated person/organization
+
+### Pipedrive Persons
+
+Contact records.
+
+**Key fields:**
+- Name and email
+- Phone number
+- Associated organization
+- All custom properties
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/pipedrive.py"
+>
+  Explore the Pipedrive connector implementation on GitHub
+</Card>

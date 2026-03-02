@@ -1,0 +1,536 @@
+---
+title: SDKs
+subtitle: Official Python and TypeScript SDKs for seamless integration with Airweave's context retrieval API
+---
+
+Airweave provides official SDKs for Python and TypeScript/JavaScript, making it easy to integrate semantic search and context retrieval into your AI applications.
+
+## Installation
+
+<CodeGroup>
+```bash Python
+pip install airweave-sdk
+```
+
+```bash TypeScript/JavaScript
+npm install @airweave/sdk
+```
+</CodeGroup>
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from airweave import AirweaveSDK
+
+# Initialize the client
+client = AirweaveSDK(
+    api_key="YOUR_API_KEY",
+    base_url="https://api.airweave.ai"  # Optional: use "http://localhost:8001" for self-hosted
+)
+
+# Search a collection
+results = client.collections.search(
+    readable_id="my-collection",
+    query="Find recent failed payments"
+)
+
+# Access results
+for result in results.results:
+    print(f"Score: {result['score']}")
+    print(f"Content: {result['payload']['md_content']}")
+    print(f"Source: {result['payload']['source_name']}")
+```
+
+```typescript TypeScript
+import { AirweaveSDKClient } from '@airweave/sdk';
+
+// Initialize the client
+const client = new AirweaveSDKClient({
+  apiKey: 'YOUR_API_KEY',
+  baseUrl: 'https://api.airweave.ai', // Optional: for self-hosted instances
+});
+
+// Search a collection
+const results = await client.collections.search('my-collection', {
+  query: 'Find recent failed payments',
+});
+
+// Access results
+results.results.forEach((result) => {
+  console.log(`Score: ${result.score}`);
+  console.log(`Content: ${result.payload.md_content}`);
+  console.log(`Source: ${result.payload.source_name}`);
+});
+```
+</CodeGroup>
+
+## Authentication
+
+Both SDKs require an API key for authentication. You can obtain your API key from:
+
+- **Cloud Platform**: [app.airweave.ai](https://app.airweave.ai) under **API Keys**
+- **Self-Hosted**: Your local dashboard at `http://localhost:8080`
+
+<Note>
+For self-hosted deployments, set `base_url="http://localhost:8001"` (Python) or `baseUrl: 'http://localhost:8001'` (TypeScript) when initializing the client.
+</Note>
+
+## Core SDK Methods
+
+### Collections
+
+#### Create Collection
+
+<CodeGroup>
+```python Python
+collection = client.collections.create(
+    name="My First Collection",
+    readable_id="my-first-collection",  # Optional: auto-generated if not provided
+    description="A collection for customer data"  # Optional
+)
+
+print(f"Created collection: {collection.readable_id}")
+```
+
+```typescript TypeScript
+const collection = await client.collections.create({
+  name: 'My First Collection',
+  readableId: 'my-first-collection', // Optional
+  description: 'A collection for customer data', // Optional
+});
+
+console.log(`Created collection: ${collection.readableId}`);
+```
+</CodeGroup>
+
+#### List Collections
+
+<CodeGroup>
+```python Python
+collections = client.collections.list(
+    skip=0,
+    limit=100
+)
+
+for collection in collections:
+    print(f"- {collection.name} ({collection.readable_id})")
+```
+
+```typescript TypeScript
+const collections = await client.collections.list({
+  skip: 0,
+  limit: 100,
+});
+
+collections.forEach((collection) => {
+  console.log(`- ${collection.name} (${collection.readableId})`);
+});
+```
+</CodeGroup>
+
+#### Get Collection
+
+<CodeGroup>
+```python Python
+collection = client.collections.get(
+    readable_id="my-collection"
+)
+
+print(f"Collection: {collection.name}")
+print(f"Created: {collection.created_at}")
+```
+
+```typescript TypeScript
+const collection = await client.collections.get('my-collection');
+
+console.log(`Collection: ${collection.name}`);
+console.log(`Created: ${collection.createdAt}`);
+```
+</CodeGroup>
+
+#### Search Collection
+
+Basic search with default parameters:
+
+<CodeGroup>
+```python Python
+results = client.collections.search(
+    readable_id="my-collection",
+    query="customer feedback about pricing"
+)
+
+print(f"Found {len(results.results)} results")
+```
+
+```typescript TypeScript
+const results = await client.collections.search('my-collection', {
+  query: 'customer feedback about pricing',
+});
+
+console.log(`Found ${results.results.length} results`);
+```
+</CodeGroup>
+
+Advanced search with all parameters:
+
+<CodeGroup>
+```python Python
+from airweave import SearchRequest, Filter, FieldCondition, MatchAny
+
+results = client.collections.search(
+    readable_id="my-collection",
+    query="customer complaints",
+    limit=10,
+    offset=0,
+    response_type="raw",  # or "completion" for AI-generated answers
+    recency_bias=0.7,  # 0.0 to 1.0 - weight recent content higher
+    score_threshold=0.6,  # Only return results above this score
+    search_method="hybrid",  # "hybrid", "neural", or "keyword"
+    expansion_strategy="auto",  # "auto", "llm", or "no_expansion"
+    enable_reranking=True,  # LLM-based reranking
+    enable_query_interpretation=True  # Extract filters from natural language
+)
+```
+
+```typescript TypeScript
+const results = await client.collections.search('my-collection', {
+  query: 'customer complaints',
+  limit: 10,
+  offset: 0,
+  responseType: 'raw', // or 'completion' for AI-generated answers
+  recencyBias: 0.7, // 0.0 to 1.0 - weight recent content higher
+  scoreThreshold: 0.6, // Only return results above this score
+  searchMethod: 'hybrid', // 'hybrid', 'neural', or 'keyword'
+  expansionStrategy: 'auto', // 'auto', 'llm', or 'no_expansion'
+  enableReranking: true, // LLM-based reranking
+  enableQueryInterpretation: true, // Extract filters from natural language
+});
+```
+</CodeGroup>
+
+#### Delete Collection
+
+<CodeGroup>
+```python Python
+client.collections.delete(
+    readable_id="my-collection"
+)
+
+print("Collection deleted")
+```
+
+```typescript TypeScript
+await client.collections.delete('my-collection');
+
+console.log('Collection deleted');
+```
+</CodeGroup>
+
+### Source Connections
+
+#### Create Source Connection
+
+<CodeGroup>
+```python Python
+source_connection = client.source_connections.create(
+    name="My Stripe Connection",
+    short_name="stripe",  # Available sources: stripe, github, notion, slack, etc.
+    readable_collection_id="my-collection",
+    authentication={
+        "credentials": {
+            "api_key": "sk_test_your_stripe_api_key"
+        }
+    }
+)
+
+print(f"Created source connection: {source_connection.id}")
+print(f"Status: {source_connection.status}")
+```
+
+```typescript TypeScript
+const sourceConnection = await client.sourceConnections.create({
+  name: 'My Stripe Connection',
+  shortName: 'stripe',
+  readableCollectionId: 'my-collection',
+  authentication: {
+    credentials: {
+      api_key: 'sk_test_your_stripe_api_key',
+    },
+  },
+});
+
+console.log(`Created source connection: ${sourceConnection.id}`);
+console.log(`Status: ${sourceConnection.status}`);
+```
+</CodeGroup>
+
+#### List Source Connections
+
+<CodeGroup>
+```python Python
+connections = client.source_connections.list(
+    skip=0,
+    limit=100
+)
+
+for connection in connections:
+    print(f"- {connection.name} ({connection.short_name}): {connection.status}")
+```
+
+```typescript TypeScript
+const connections = await client.sourceConnections.list({
+  skip: 0,
+  limit: 100,
+});
+
+connections.forEach((connection) => {
+  console.log(`- ${connection.name} (${connection.shortName}): ${connection.status}`);
+});
+```
+</CodeGroup>
+
+#### Trigger Sync
+
+<CodeGroup>
+```python Python
+job = client.source_connections.run(
+    source_connection_id="conn_123456"
+)
+
+print(f"Sync started: {job.id}")
+print(f"Status: {job.status}")
+```
+
+```typescript TypeScript
+const job = await client.sourceConnections.run('conn_123456');
+
+console.log(`Sync started: ${job.id}`);
+console.log(`Status: ${job.status}`);
+```
+</CodeGroup>
+
+#### Get Sync Jobs
+
+<CodeGroup>
+```python Python
+jobs = client.source_connections.get_jobs(
+    source_connection_id="conn_123456"
+)
+
+for job in jobs:
+    print(f"Job {job.id}: {job.status} - {job.created_at}")
+```
+
+```typescript TypeScript
+const jobs = await client.sourceConnections.getJobs('conn_123456');
+
+jobs.forEach((job) => {
+  console.log(`Job ${job.id}: ${job.status} - ${job.createdAt}`);
+});
+```
+</CodeGroup>
+
+## Search Parameters Reference
+
+<ParamField path="query" type="string" required>
+  The search query text to find relevant documents and data
+</ParamField>
+
+<ParamField path="response_type" type="string" default="raw">
+  Format of the response:
+  - `raw`: Returns search results with scores and metadata
+  - `completion`: Returns an AI-generated natural language answer
+</ParamField>
+
+<ParamField path="limit" type="integer" default="100">
+  Maximum number of results to return (1-1000)
+</ParamField>
+
+<ParamField path="offset" type="integer" default="0">
+  Number of results to skip for pagination
+</ParamField>
+
+<ParamField path="recency_bias" type="float">
+  How much to weigh recency vs similarity (0.0 to 1.0)
+  - `0.0`: No recency effect (pure similarity ranking)
+  - `1.0`: Rank by recency only
+  - `0.5`: Balance between recency and similarity
+</ParamField>
+
+<ParamField path="score_threshold" type="float">
+  Minimum similarity score threshold (0.0 to 1.0). Only return results above this score.
+</ParamField>
+
+<ParamField path="search_method" type="string" default="hybrid">
+  Search method to use:
+  - `hybrid`: Combines neural (semantic) + keyword search (recommended)
+  - `neural`: Semantic search only
+  - `keyword`: Text matching only
+</ParamField>
+
+<ParamField path="expansion_strategy" type="string" default="auto">
+  Query expansion strategy:
+  - `auto`: Generates query variations automatically
+  - `llm`: AI-powered query expansion
+  - `no_expansion`: Use exact query without expansion
+</ParamField>
+
+<ParamField path="enable_reranking" type="boolean" default="true">
+  Enable LLM-based reranking to improve result relevance
+</ParamField>
+
+<ParamField path="enable_query_interpretation" type="boolean" default="true">
+  Enable automatic filter extraction from natural language queries
+</ParamField>
+
+## Advanced Examples
+
+### AI-Generated Answers (RAG)
+
+Get direct answers instead of raw search results:
+
+<CodeGroup>
+```python Python
+results = client.collections.search(
+    readable_id="docs-collection",
+    query="What is our refund policy?",
+    response_type="completion",
+    limit=5
+)
+
+print(results.completion)  # AI-generated answer based on search results
+```
+
+```typescript TypeScript
+const results = await client.collections.search('docs-collection', {
+  query: 'What is our refund policy?',
+  responseType: 'completion',
+  limit: 5,
+});
+
+console.log(results.completion); // AI-generated answer
+```
+</CodeGroup>
+
+### Recent Content Prioritization
+
+Find the most recent documents about a topic:
+
+<CodeGroup>
+```python Python
+results = client.collections.search(
+    readable_id="news-collection",
+    query="AI breakthroughs",
+    recency_bias=0.8,  # Heavily favor recent content
+    limit=10
+)
+```
+
+```typescript TypeScript
+const results = await client.collections.search('news-collection', {
+  query: 'AI breakthroughs',
+  recencyBias: 0.8, // Heavily favor recent content
+  limit: 10,
+});
+```
+</CodeGroup>
+
+### High-Quality Results Only
+
+Filter out low-relevance results:
+
+<CodeGroup>
+```python Python
+results = client.collections.search(
+    readable_id="research-papers",
+    query="transformer architectures",
+    score_threshold=0.75,  # Only results with 75%+ similarity
+    enable_reranking=True
+)
+```
+
+```typescript TypeScript
+const results = await client.collections.search('research-papers', {
+  query: 'transformer architectures',
+  scoreThreshold: 0.75, // Only results with 75%+ similarity
+  enableReranking: true,
+});
+```
+</CodeGroup>
+
+### Pagination
+
+<CodeGroup>
+```python Python
+# Get results 11-20
+results = client.collections.search(
+    readable_id="my-collection",
+    query="customer data",
+    limit=10,
+    offset=10
+)
+```
+
+```typescript TypeScript
+// Get results 11-20
+const results = await client.collections.search('my-collection', {
+  query: 'customer data',
+  limit: 10,
+  offset: 10,
+});
+```
+</CodeGroup>
+
+## Error Handling
+
+<CodeGroup>
+```python Python
+from airweave import AirweaveSDK
+from airweave.exceptions import AirweaveAPIError
+
+try:
+    results = client.collections.search(
+        readable_id="my-collection",
+        query="test query"
+    )
+except AirweaveAPIError as e:
+    print(f"API Error: {e.status_code} - {e.message}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+```typescript TypeScript
+import { AirweaveSDKClient } from '@airweave/sdk';
+
+try {
+  const results = await client.collections.search('my-collection', {
+    query: 'test query',
+  });
+} catch (error) {
+  if (error.statusCode) {
+    console.error(`API Error: ${error.statusCode} - ${error.message}`);
+  } else {
+    console.error(`Unexpected error: ${error}`);
+  }
+}
+```
+</CodeGroup>
+
+## SDK Source Code
+
+<CardGroup cols={2}>
+  <Card title="Python SDK" icon="python" href="https://github.com/airweave-ai/python-sdk">
+    View the Python SDK source code on GitHub
+  </Card>
+  <Card title="TypeScript SDK" icon="js" href="https://github.com/airweave-ai/typescript-sdk">
+    View the TypeScript SDK source code on GitHub
+  </Card>
+</CardGroup>
+
+## Need Help?
+
+- [API Reference](/api-reference) - Complete API documentation
+- [Quickstart Guide](/quickstart) - Get started with Airweave
+- [Discord Community](https://discord.gg/484HY9Ehxt) - Get help from the community
+- [GitHub Issues](https://github.com/airweave-ai/airweave/issues) - Report bugs or request features

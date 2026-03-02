@@ -1,0 +1,750 @@
+---
+title: 'Configuration'
+description: 'Environment variables and configuration options for Airweave'
+---
+
+## Environment File
+
+Airweave uses environment variables for configuration. Copy `.env.example` to `.env` and customize:
+
+```bash
+cp .env.example .env
+```
+
+The `start.sh` script automatically generates required secrets if they're missing.
+
+## Required Variables
+
+These variables **must** be set for Airweave to function:
+
+### Encryption & Security
+
+<ParamField path="ENCRYPTION_KEY" type="string" required>
+  Base64-encoded 32-byte key for encrypting sensitive data (API keys, OAuth tokens)
+  
+  **Auto-generated** by `start.sh` using:
+  ```bash
+  openssl rand -base64 32
+  ```
+</ParamField>
+
+<ParamField path="STATE_SECRET" type="string" required>
+  Secret for OAuth state parameter signing
+  
+  **Auto-generated** by `start.sh` using:
+  ```bash
+  python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+  ```
+</ParamField>
+
+### Embedding Configuration
+
+<Warning>
+  All three embedding variables are **required**. The application will not start without them.
+</Warning>
+
+<ParamField path="DENSE_EMBEDDER" type="string" required>
+  Dense embedding model for semantic search
+  
+  **Options**:
+  - `openai_text_embedding_3_small` - Up to 1536 dimensions (requires `OPENAI_API_KEY`)
+  - `openai_text_embedding_3_large` - Up to 3072 dimensions (requires `OPENAI_API_KEY`)
+  - `mistral_embed` - Fixed 1024 dimensions (requires `MISTRAL_API_KEY`)
+  - `local_minilm` - Fixed 384 dimensions (requires local embeddings service)
+  
+  **Default**: `openai_text_embedding_3_small`
+</ParamField>
+
+<ParamField path="EMBEDDING_DIMENSIONS" type="integer" required>
+  Vector dimensions matching the chosen embedder
+  
+  **Must match your DENSE_EMBEDDER**:
+  - OpenAI small: `1536`
+  - OpenAI large: `3072`
+  - Mistral: `1024`
+  - Local MiniLM: `384`
+  
+  **Default**: `1536`
+  
+  <Note>
+    Changing this after data is indexed requires re-indexing all documents.
+  </Note>
+</ParamField>
+
+<ParamField path="SPARSE_EMBEDDER" type="string" required>
+  Sparse embedding model for keyword search (BM25)
+  
+  **Options**:
+  - `fastembed_bm25` - Fast BM25 implementation (no API key needed)
+  
+  **Default**: `fastembed_bm25`
+</ParamField>
+
+## Database Configuration
+
+### PostgreSQL
+
+<ParamField path="POSTGRES_HOST" type="string" default="localhost">
+  PostgreSQL server hostname
+  
+  **Docker Compose**: `localhost` (mapped port)
+  
+  **Kubernetes**: Service name (e.g., `postgres-service`)
+</ParamField>
+
+<ParamField path="POSTGRES_PORT" type="integer" default="5432">
+  PostgreSQL server port
+</ParamField>
+
+<ParamField path="POSTGRES_USER" type="string" default="airweave">
+  PostgreSQL username
+</ParamField>
+
+<ParamField path="POSTGRES_PASSWORD" type="string" default="airweave1234!">
+  PostgreSQL password
+  
+  <Warning>
+    Change this in production!
+  </Warning>
+</ParamField>
+
+<ParamField path="POSTGRES_DB" type="string" default="airweave">
+  PostgreSQL database name
+</ParamField>
+
+<ParamField path="POSTGRES_SSLMODE" type="string" default="prefer">
+  SSL mode for PostgreSQL connection
+  
+  **Options**: `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`
+</ParamField>
+
+### Redis
+
+<ParamField path="REDIS_HOST" type="string" default="localhost">
+  Redis server hostname
+</ParamField>
+
+<ParamField path="REDIS_PORT" type="integer" default="6379">
+  Redis server port
+</ParamField>
+
+## Storage Configuration
+
+Airweave supports multiple storage backends for file attachments:
+
+### Backend Selection
+
+<ParamField path="STORAGE_BACKEND" type="string" default="filesystem">
+  Storage backend type
+  
+  **Options**:
+  - `filesystem` - Local or PVC storage (default for local/test)
+  - `azure` - Azure Blob Storage (default for dev/prd with Azure)
+  - `aws` - AWS S3 or S3-compatible storage
+  - `gcp` - Google Cloud Storage
+  
+  **Auto-resolution**: If not set, defaults based on `ENVIRONMENT`:
+  - `local` or `test` → `filesystem`
+  - `dev` or `prd` → `azure`
+</ParamField>
+
+### Filesystem Storage
+
+<ParamField path="STORAGE_PATH" type="string" default="./local_storage">
+  Local filesystem path for file storage
+  
+  **Development**: `./local_storage` (relative to project root)
+  
+  **Kubernetes**: `/data/airweave-storage` (PVC mount point)
+  
+  **Debugging tip**: Use `/tmp/airweave_local_storage` to avoid uvicorn reload issues
+</ParamField>
+
+<ParamField path="SKIP_AZURE_STORAGE" type="boolean" default="true">
+  Skip Azure Blob Storage initialization (set by `start.sh`)
+</ParamField>
+
+### Azure Blob Storage
+
+<ParamField path="STORAGE_AZURE_ACCOUNT" type="string">
+  Azure Storage account name
+  
+  **Example**: `airweavestorage`
+</ParamField>
+
+<ParamField path="STORAGE_AZURE_CONTAINER" type="string" default="raw">
+  Azure Blob container name
+</ParamField>
+
+<ParamField path="STORAGE_AZURE_PREFIX" type="string">
+  Optional path prefix within container
+</ParamField>
+
+### AWS S3 Storage
+
+<ParamField path="STORAGE_AWS_BUCKET" type="string">
+  S3 bucket name
+  
+  **Example**: `airweave-production`
+</ParamField>
+
+<ParamField path="STORAGE_AWS_REGION" type="string">
+  AWS region
+  
+  **Example**: `us-east-1`
+</ParamField>
+
+<ParamField path="STORAGE_AWS_PREFIX" type="string">
+  Optional path prefix within bucket
+</ParamField>
+
+<ParamField path="STORAGE_AWS_ENDPOINT_URL" type="string">
+  Custom S3 endpoint for MinIO, LocalStack, etc.
+  
+  **Example**: `http://minio:9000`
+</ParamField>
+
+<ParamField path="AWS_ACCESS_KEY_ID" type="string">
+  AWS access key (or use IAM roles in production)
+</ParamField>
+
+<ParamField path="AWS_SECRET_ACCESS_KEY" type="string">
+  AWS secret key (or use IAM roles in production)
+</ParamField>
+
+### GCP Cloud Storage
+
+<ParamField path="STORAGE_GCP_BUCKET" type="string">
+  GCS bucket name
+</ParamField>
+
+<ParamField path="STORAGE_GCP_PROJECT" type="string">
+  GCP project ID
+</ParamField>
+
+<ParamField path="STORAGE_GCP_PREFIX" type="string">
+  Optional path prefix within bucket
+</ParamField>
+
+## Authentication
+
+### Local Authentication
+
+<ParamField path="AUTH_ENABLED" type="boolean" default="false">
+  Enable authentication system
+  
+  **Development**: `false` (single-user mode)
+  
+  **Production**: `true` (requires Auth0 or similar)
+</ParamField>
+
+<ParamField path="FIRST_SUPERUSER" type="string" default="admin@example.com">
+  Default admin user email (when `AUTH_ENABLED=false`)
+</ParamField>
+
+<ParamField path="FIRST_SUPERUSER_PASSWORD" type="string" default="admin">
+  Default admin password
+  
+  <Warning>
+    Change this in production!
+  </Warning>
+</ParamField>
+
+### Auth0 Configuration
+
+<Info>
+  Required when `AUTH_ENABLED=true`
+</Info>
+
+<ParamField path="AUTH0_DOMAIN" type="string">
+  Auth0 tenant domain
+  
+  **Example**: `your-tenant.auth0.com`
+</ParamField>
+
+<ParamField path="AUTH0_AUDIENCE" type="string">
+  Auth0 API audience identifier
+  
+  **Example**: `https://api.airweave.ai`
+</ParamField>
+
+<ParamField path="AUTH0_RULE_NAMESPACE" type="string">
+  Namespace for custom claims in Auth0 tokens
+  
+  **Example**: `https://airweave.ai`
+</ParamField>
+
+## Temporal Configuration
+
+<ParamField path="TEMPORAL_HOST" type="string" default="localhost">
+  Temporal server hostname
+</ParamField>
+
+<ParamField path="TEMPORAL_PORT" type="integer" default="7233">
+  Temporal gRPC port
+</ParamField>
+
+<ParamField path="TEMPORAL_NAMESPACE" type="string" default="default">
+  Temporal namespace for workflows
+</ParamField>
+
+<ParamField path="TEMPORAL_TASK_QUEUE" type="string" default="airweave-sync-queue">
+  Task queue name for sync workers
+</ParamField>
+
+## Vespa Configuration
+
+<ParamField path="VESPA_URL" type="string" default="http://localhost">
+  Vespa server URL (without port)
+</ParamField>
+
+<ParamField path="VESPA_PORT" type="integer" default="8081">
+  Vespa document API port
+</ParamField>
+
+## Embeddings Services
+
+### Local Embeddings
+
+<ParamField path="TEXT2VEC_INFERENCE_URL" type="string" default="http://localhost:9878">
+  Local embedding service URL
+  
+  **Docker**: `http://text2vec-transformers:8080`
+  
+  **Only used when** `DENSE_EMBEDDER=local_minilm`
+</ParamField>
+
+### API Keys
+
+<ParamField path="OPENAI_API_KEY" type="string">
+  OpenAI API key for embeddings and LLM features
+  
+  **Required for**:
+  - `openai_text_embedding_3_small`
+  - `openai_text_embedding_3_large`
+  - File content extraction
+  - Natural language search
+</ParamField>
+
+<ParamField path="ANTHROPIC_API_KEY" type="string">
+  Anthropic API key (for future features)
+</ParamField>
+
+<ParamField path="MISTRAL_API_KEY" type="string">
+  Mistral API key for embeddings
+  
+  **Required for**: `mistral_embed` embedder
+</ParamField>
+
+## Webhook Configuration (Svix)
+
+<ParamField path="SVIX_URL" type="string" default="http://localhost:8071">
+  Svix webhook server URL
+</ParamField>
+
+<ParamField path="SVIX_JWT_SECRET" type="string">
+  Secret for signing Svix JWTs (must be ≥32 bytes)
+  
+  **Default**: `default_signing_secret_change_me!`
+  
+  <Warning>
+    Change this in production!
+  </Warning>
+</ParamField>
+
+<ParamField path="SVIX_AUTH_TOKEN" type="string">
+  Optional authentication token for Svix API
+</ParamField>
+
+## Application Settings
+
+### Environment
+
+<ParamField path="ENVIRONMENT" type="string" default="local">
+  Deployment environment
+  
+  **Options**: `local`, `test`, `dev`, `prd`
+  
+  **Affects**:
+  - Default storage backend
+  - Logging verbosity
+  - Error reporting
+</ParamField>
+
+<ParamField path="LOCAL_DEVELOPMENT" type="boolean" default="false">
+  Enable development mode features
+  
+  **When true**:
+  - Hot reload enabled
+  - Verbose logging
+  - CORS relaxed
+  
+  **Docker**: Automatically set to `true`
+</ParamField>
+
+<ParamField path="LOCAL_CURSOR_DEVELOPMENT" type="boolean" default="false">
+  Special mode for Cursor IDE integration
+</ParamField>
+
+### Logging
+
+<ParamField path="LOG_LEVEL" type="string" default="INFO">
+  Python logging level
+  
+  **Options**: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+</ParamField>
+
+### Database Management
+
+<ParamField path="RUN_ALEMBIC_MIGRATIONS" type="boolean" default="true">
+  Automatically run database migrations on startup
+  
+  **Recommended**: `true` for most deployments
+  
+  **Set to `false`** only if managing migrations externally
+</ParamField>
+
+<ParamField path="RUN_DB_SYNC" type="boolean" default="true">
+  Synchronize database state on startup
+</ParamField>
+
+### Features
+
+<ParamField path="CODE_SUMMARIZER_ENABLED" type="boolean" default="false">
+  Enable AI code summarization for developer tools
+</ParamField>
+
+<ParamField path="STRIPE_ENABLED" type="boolean" default="false">
+  Enable Stripe payment integration (for managed hosting)
+</ParamField>
+
+### URLs
+
+<ParamField path="API_FULL_URL" type="string">
+  Full public URL for the API (for webhooks and OAuth callbacks)
+  
+  **Example**: `https://api.yourdomain.com`
+</ParamField>
+
+<ParamField path="APP_FULL_URL" type="string">
+  Full public URL for the frontend
+  
+  **Example**: `https://app.yourdomain.com`
+</ParamField>
+
+<ParamField path="ADDITIONAL_CORS_ORIGINS" type="string">
+  Comma-separated list of additional CORS origins
+  
+  **Example**: `https://custom-ui.com,https://staging.example.com`
+</ParamField>
+
+### Frontend
+
+<ParamField path="FRONTEND_LOCAL_DEVELOPMENT_PORT" type="integer" default="8080">
+  Port for frontend UI
+</ParamField>
+
+### Miscellaneous
+
+<ParamField path="PROJECT_NAME" type="string" default="Airweave">
+  Project display name
+</ParamField>
+
+<ParamField path="DOCLING_BASE_URL" type="string">
+  Optional secondary OCR provider for document processing
+</ParamField>
+
+## Test Configuration
+
+These variables are only used for integration tests:
+
+### AWS S3 Tests
+
+<ParamField path="STORAGE_TEST_AWS_BUCKET" type="string" default="airweave-storage-backend-tests">
+  S3 bucket for storage backend tests
+</ParamField>
+
+<ParamField path="STORAGE_TEST_AWS_REGION" type="string" default="us-east-1">
+  AWS region for tests
+</ParamField>
+
+### GCP Storage Tests
+
+<ParamField path="STORAGE_TEST_GCP_BUCKET" type="string" default="airweave-storage-backend-tests">
+  GCS bucket for tests
+</ParamField>
+
+<ParamField path="STORAGE_TEST_GCP_PROJECT" type="string" default="airweave-production">
+  GCP project for tests
+</ParamField>
+
+### Azure Blob Tests
+
+<ParamField path="STORAGE_TEST_AZURE_ACCOUNT" type="string" default="airweavecoredevstorage">
+  Azure storage account for tests
+</ParamField>
+
+<ParamField path="STORAGE_TEST_AZURE_CONTAINER" type="string" default="backend-tests">
+  Azure container for tests
+</ParamField>
+
+## Configuration Examples
+
+### Development (Local Embeddings)
+
+```bash .env
+# Auto-generated secrets
+ENCRYPTION_KEY="<generated>"
+STATE_SECRET="<generated>"
+
+# Database (defaults)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=airweave
+POSTGRES_PASSWORD=airweave1234!
+POSTGRES_DB=airweave
+
+# Embeddings (local)
+DENSE_EMBEDDER=local_minilm
+EMBEDDING_DIMENSIONS=384
+SPARSE_EMBEDDER=fastembed_bm25
+TEXT2VEC_INFERENCE_URL=http://localhost:9878
+
+# Storage
+STORAGE_BACKEND=filesystem
+STORAGE_PATH=./local_storage
+SKIP_AZURE_STORAGE=true
+
+# Auth (disabled for dev)
+AUTH_ENABLED=false
+FIRST_SUPERUSER=admin@example.com
+FIRST_SUPERUSER_PASSWORD=admin
+
+# Environment
+ENVIRONMENT=local
+LOCAL_DEVELOPMENT=true
+LOG_LEVEL=INFO
+```
+
+### Production (OpenAI Embeddings + Cloud Storage)
+
+```bash .env
+# Security (regenerate all!)
+ENCRYPTION_KEY="<strong-random-key>"
+STATE_SECRET="<strong-random-secret>"
+SVIX_JWT_SECRET="<strong-random-secret>"
+
+# Database (managed service)
+POSTGRES_HOST=postgres.example.com
+POSTGRES_PORT=5432
+POSTGRES_USER=airweave
+POSTGRES_PASSWORD="<strong-password>"
+POSTGRES_DB=airweave
+POSTGRES_SSLMODE=require
+
+# Redis (managed service)
+REDIS_HOST=redis.example.com
+REDIS_PORT=6379
+
+# Embeddings (OpenAI)
+DENSE_EMBEDDER=openai_text_embedding_3_small
+EMBEDDING_DIMENSIONS=1536
+SPARSE_EMBEDDER=fastembed_bm25
+OPENAI_API_KEY="sk-..."
+
+# Storage (AWS S3)
+STORAGE_BACKEND=aws
+STORAGE_AWS_BUCKET=airweave-production
+STORAGE_AWS_REGION=us-east-1
+# Use IAM roles instead of access keys in production
+
+# Auth (enabled)
+AUTH_ENABLED=true
+AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_AUDIENCE=https://api.yourdomain.com
+AUTH0_RULE_NAMESPACE=https://yourdomain.com
+
+# URLs
+API_FULL_URL=https://api.yourdomain.com
+APP_FULL_URL=https://app.yourdomain.com
+
+# Environment
+ENVIRONMENT=prd
+LOCAL_DEVELOPMENT=false
+LOG_LEVEL=WARNING
+```
+
+### Kubernetes (Mistral Embeddings + GCP Storage)
+
+```bash .env
+# Security (loaded from Kubernetes Secrets)
+ENCRYPTION_KEY="${ENCRYPTION_KEY}"
+STATE_SECRET="${STATE_SECRET}"
+
+# Database (Kubernetes service)
+POSTGRES_HOST=postgres-service
+POSTGRES_PORT=5432
+POSTGRES_USER=airweave
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+POSTGRES_DB=airweave
+
+# Redis (Kubernetes service)
+REDIS_HOST=redis-service
+REDIS_PORT=6379
+
+# Embeddings (Mistral)
+DENSE_EMBEDDER=mistral_embed
+EMBEDDING_DIMENSIONS=1024
+SPARSE_EMBEDDER=fastembed_bm25
+MISTRAL_API_KEY="${MISTRAL_API_KEY}"
+
+# Storage (GCP with Workload Identity)
+STORAGE_BACKEND=gcp
+STORAGE_GCP_BUCKET=airweave-production
+STORAGE_GCP_PROJECT=your-project-id
+# No credentials needed - uses Workload Identity
+
+# Temporal (Kubernetes service)
+TEMPORAL_HOST=temporal-service
+TEMPORAL_PORT=7233
+
+# Vespa (Kubernetes service)
+VESPA_URL=http://vespa-service
+VESPA_PORT=8081
+
+# Auth
+AUTH_ENABLED=true
+AUTH0_DOMAIN="${AUTH0_DOMAIN}"
+AUTH0_AUDIENCE="${AUTH0_AUDIENCE}"
+
+# Environment
+ENVIRONMENT=prd
+LOG_LEVEL=INFO
+RUN_ALEMBIC_MIGRATIONS=true
+```
+
+## Security Best Practices
+
+<Warning>
+  Never commit `.env` files to version control!
+</Warning>
+
+<Steps>
+  <Step title="Rotate secrets regularly">
+    Generate new values for:
+    - `ENCRYPTION_KEY`
+    - `STATE_SECRET`
+    - `SVIX_JWT_SECRET`
+    - Database passwords
+  </Step>
+
+  <Step title="Use secrets management">
+    In production, load secrets from:
+    - **Kubernetes**: Secrets, External Secrets Operator
+    - **AWS**: Secrets Manager, Parameter Store
+    - **Azure**: Key Vault
+    - **GCP**: Secret Manager
+    - **HashiCorp**: Vault
+  </Step>
+
+  <Step title="Use managed identity">
+    For cloud storage, prefer:
+    - AWS IAM Roles for Service Accounts (IRSA)
+    - Azure Managed Identity / Workload Identity
+    - GCP Workload Identity
+    
+    Avoid hardcoding access keys.
+  </Step>
+
+  <Step title="Enable SSL/TLS">
+    - Set `POSTGRES_SSLMODE=require`
+    - Use HTTPS for all external URLs
+    - Configure TLS certificates for Redis if exposed
+  </Step>
+
+  <Step title="Restrict network access">
+    - Use private networks for database connections
+    - Firewall rules for service-to-service communication
+    - VPN or bastion hosts for admin access
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Application won't start - missing embedding variables">
+    **Error**: `DENSE_EMBEDDER, EMBEDDING_DIMENSIONS, and SPARSE_EMBEDDER must all be set`
+    
+    **Solution**: Set all three variables in `.env`:
+    ```bash
+    DENSE_EMBEDDER=openai_text_embedding_3_small
+    EMBEDDING_DIMENSIONS=1536
+    SPARSE_EMBEDDER=fastembed_bm25
+    ```
+  </Accordion>
+
+  <Accordion title="Dimension mismatch error">
+    **Error**: Vespa schema expects different dimensions
+    
+    **Solution**:
+    1. Ensure `EMBEDDING_DIMENSIONS` matches your `DENSE_EMBEDDER`
+    2. Recreate Vespa deployment:
+       ```bash
+       docker compose down --volumes
+       ./start.sh
+       ```
+  </Accordion>
+
+  <Accordion title="Storage backend not working">
+    **Check**:
+    1. Credentials are correct (access keys, service account)
+    2. Bucket/container exists and is accessible
+    3. Permissions allow read/write operations
+    
+    **Test connection**:
+    ```bash
+    docker exec airweave-backend \
+      poetry run python -c "from airweave.utils.storage import get_storage_backend; get_storage_backend().list_files('test/')"
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection failures">
+    **Debug**:
+    ```bash
+    # Test from backend container
+    docker exec airweave-backend \
+      poetry run python -c "from airweave.db.engine import get_session; next(get_session())"
+    
+    # Check PostgreSQL logs
+    docker logs airweave-db
+    ```
+    
+    **Common issues**:
+    - Wrong host/port
+    - Incorrect credentials
+    - SSL mode mismatch
+    - Database not initialized
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Deploy with Docker" icon="docker" href="/deployment/docker-compose">
+  Get started with Docker Compose deployment
+</Card>
+
+<Card title="Scale with Kubernetes" icon="dharmachakra" href="/deployment/kubernetes">
+  Production deployment on Kubernetes
+</Card>
+
+<Card title="Configure Connectors" icon="plug" href="/connectors/overview">
+  Set up data source integrations
+</Card>
+
+<Card title="Advanced Features" icon="wand-magic-sparkles" href="/embeddings">
+  Customize embeddings, chunking, and transformers
+</Card>
+
+</CardGroup>

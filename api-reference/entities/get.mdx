@@ -1,0 +1,194 @@
+---
+title: 'Get Entity'
+api: 'GET /v1/entities/{id}'
+description: 'Retrieve a specific entity by its UUID'
+---
+
+## Overview
+
+Retrieve detailed metadata for a specific entity by its UUID. This endpoint returns the entity's database record including sync information, content hash, and timestamps.
+
+For accessing entity content (full text, embeddings), use the [Search Collection](/api-reference/collections/search) endpoint instead.
+
+<Note>
+This is a low-level endpoint primarily used for debugging and monitoring. For most use cases, you should use the Collection Search API to query your data.
+</Note>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the entity
+  
+  Example: "e1f2a3b4-c5d6-7890-abcd-ef1234567890"
+</ParamField>
+
+## Response
+
+Returns a single entity metadata object.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier for this entity record
+</ResponseField>
+
+<ResponseField name="entity_id" type="string" required>
+  Source-specific entity identifier
+  
+  For chunked documents, includes chunk suffix (e.g., `doc_123__chunk_0`)
+</ResponseField>
+
+<ResponseField name="sync_job_id" type="string" required>
+  UUID of the sync job that created/updated this entity
+</ResponseField>
+
+<ResponseField name="sync_id" type="string" required>
+  UUID of the sync configuration
+</ResponseField>
+
+<ResponseField name="entity_definition_id" type="string">
+  UUID of the entity definition (schema)
+  
+  Defines the structure and type of this entity (e.g., GitHub file, Slack message)
+</ResponseField>
+
+<ResponseField name="hash" type="string" required>
+  Content hash for deduplication and change detection
+  
+  Format: `sha256:...`
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  UUID of the organization that owns this entity
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp when this entity was first created in Airweave
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  ISO 8601 timestamp when this entity was last modified
+  
+  Updated when the entity content changes and is re-synced
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.airweave.ai/v1/entities/e1f2a3b4-c5d6-7890-abcd-ef1234567890 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/entities/e1f2a3b4-c5d6-7890-abcd-ef1234567890"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.get(url, headers=headers)
+entity = response.json()
+
+print(f"Entity ID: {entity['entity_id']}")
+print(f"Hash: {entity['hash']}")
+print(f"Last Modified: {entity['modified_at']}")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/entities/e1f2a3b4-c5d6-7890-abcd-ef1234567890';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const entity = await response.json();
+
+console.log(`Entity ID: ${entity.entity_id}`);
+console.log(`Hash: ${entity.hash}`);
+console.log(`Last Modified: ${entity.modified_at}`);
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "entity_id": "docs/getting-started.md__chunk_0",
+  "sync_job_id": "770e8400-e29b-41d4-a716-446655440002",
+  "sync_id": "660e8400-e29b-41d4-a716-446655440001",
+  "entity_definition_id": "def12345-6789-abcd-ef01-234567890abc",
+  "hash": "sha256:a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "organization_id": "org12345-6789-abcd-ef01-234567890abc",
+  "created_at": "2024-03-15T12:05:22Z",
+  "modified_at": "2024-03-15T12:05:22Z"
+}
+```
+
+## Understanding Entity IDs
+
+### Source Entity IDs
+
+The `entity_id` field contains the original identifier from the source system:
+
+- **GitHub**: `repo/path/file.md`
+- **Slack**: `channel_id/message_timestamp`
+- **Notion**: `page_id`
+- **Google Drive**: `file_id`
+
+### Chunked Documents
+
+When documents are split into chunks for embedding, each chunk gets a suffix:
+
+```
+docs/getting-started.md__chunk_0
+docs/getting-started.md__chunk_1
+docs/getting-started.md__chunk_2
+```
+
+The chunk index indicates the position within the original document.
+
+## Use Cases
+
+### Verify Entity Sync Status
+
+Check if a specific entity was synced successfully:
+
+```python
+entity = requests.get(url, headers=headers).json()
+if entity['modified_at'] > last_sync_time:
+    print("Entity was updated in latest sync")
+```
+
+### Track Entity Changes
+
+Monitor when entity content changes by comparing hashes:
+
+```python
+previous_hash = get_stored_hash(entity_id)
+current_hash = entity['hash']
+
+if previous_hash != current_hash:
+    print("Entity content has changed")
+```
+
+### Debug Sync Issues
+
+Inspect entity metadata to diagnose why content isn't appearing in search:
+
+```python
+entity = requests.get(url, headers=headers).json()
+print(f"Sync Job: {entity['sync_job_id']}")
+print(f"Entity Definition: {entity['entity_definition_id']}")
+print(f"Last Modified: {entity['modified_at']}")
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Entity with the specified UUID does not exist
+</ResponseField>
+
+<Warning>
+This endpoint returns metadata only. To access entity content (full text, markdown, embeddings), use the Search Collection endpoint which queries the vector database.
+</Warning>

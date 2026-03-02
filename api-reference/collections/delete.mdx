@@ -1,0 +1,103 @@
+---
+title: 'Delete Collection'
+api: 'DELETE /v1/collections/{readable_id}'
+description: 'Permanently delete a collection and all associated data'
+---
+
+## Overview
+
+Permanently delete a collection and all its data. This operation:
+
+- Removes all synced data from the vector database
+- Deletes all source connections within the collection
+- Cancels any scheduled sync jobs
+- Cleans up all related resources
+
+<Warning>
+This action cannot be undone. All data will be permanently deleted.
+</Warning>
+
+## Path Parameters
+
+<ParamField path="readable_id" type="string" required>
+  The unique readable identifier of the collection to delete
+</ParamField>
+
+## Response
+
+Returns the deleted collection object.
+
+<ResponseField name="id" type="string" required>
+  UUID of the deleted collection
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Name of the deleted collection
+</ResponseField>
+
+<ResponseField name="readable_id" type="string" required>
+  Readable ID of the deleted collection
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Final status of the collection
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://api.airweave.ai/v1/collections/finance-data-ab123 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/collections/finance-data-ab123"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.delete(url, headers=headers)
+deleted_collection = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/collections/finance-data-ab123';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, {
+  method: 'DELETE',
+  headers: headers
+});
+const deletedCollection = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Finance Data",
+  "readable_id": "finance-data-ab123",
+  "vector_size": 3072,
+  "embedding_model_name": "text-embedding-3-large",
+  "sync_config": null,
+  "created_at": "2024-01-15T09:30:00Z",
+  "modified_at": "2024-01-15T14:22:15Z",
+  "organization_id": "org12345-6789-abcd-ef01-234567890abc",
+  "created_by_email": "admin@company.com",
+  "modified_by_email": "finance@company.com",
+  "status": "ACTIVE"
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Collection with the specified readable_id does not exist
+</ResponseField>

@@ -1,0 +1,87 @@
+---
+title: GitHub
+description: Connect GitHub to Airweave to sync repositories and code
+---
+
+Connect GitHub repositories to Airweave to make your code searchable by AI agents.
+
+## What Gets Synced
+
+The GitHub connector syncs:
+
+- **Repositories** - Repository metadata and stats
+- **Directories** - Directory structure
+- **Code Files** - Source code files
+
+## Authentication
+
+This connector uses **Personal Access Token** authentication.
+
+## Configuration
+
+### Repository Name (Required)
+
+Repository in `owner/repo` format (e.g., `airweave-ai/airweave`).
+
+### Branch (Optional)
+
+Specific branch to sync (e.g., `main`, `development`). If empty, uses the default branch.
+
+## Setup
+
+<Steps>
+  <Step title="Create GitHub Personal Access Token">
+    1. Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
+    2. Generate a new token with:
+       - Repository access: Select specific repos
+       - Permissions: Contents (Read-only)
+  </Step>
+  
+  <Step title="Add GitHub Connection">
+    In Airweave, click **Add Source** → **GitHub**.
+  </Step>
+  
+  <Step title="Configure Repository">
+    Enter:
+    - Personal Access Token
+    - Repository name (e.g., `airweave-ai/airweave`)
+    - Branch (optional)
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### GitHub Repository
+
+Repository-level metadata.
+
+**Key fields:**
+- Repository name and description
+- Default branch
+- Language and size
+- Stars, forks, watchers
+
+### GitHub Code Files
+
+Source code files.
+
+**Key fields:**
+- File path and name
+- Branch
+- SHA hash
+- Line count
+- HTML URL
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/github.py"
+>
+  Explore the GitHub connector implementation on GitHub
+</Card>
+
+<Note>
+For detailed token setup instructions with screenshots, see the [GitHub connector source documentation](https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/github.py).
+</Note>

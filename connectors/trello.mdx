@@ -1,0 +1,69 @@
+---
+title: Trello
+description: Connect Trello to Airweave to sync boards, cards, and checklists
+---
+
+Connect Trello to Airweave to make your kanban boards searchable by AI agents.
+
+## What Gets Synced
+
+The Trello connector syncs:
+
+- **Boards** - Board metadata and settings
+- **Lists** - Columns on boards
+- **Cards** - Cards with full details
+- **Checklists** - Card checklist items
+- **Members** - Board members and collaborators
+
+## Authentication
+
+This connector uses **OAuth 1.0** authentication (Trello's authentication method).
+
+## Setup
+
+<Steps>
+  <Step title="Add Trello Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Trello**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Trello boards.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Trello data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Trello Cards
+
+Cards with full context and metadata.
+
+**Key fields:**
+- Card name and description
+- Board and list assignment
+- Due dates and completion status
+- Assigned members
+- Labels and checklists
+- Attachment count
+
+### Trello Boards
+
+Board-level organization.
+
+**Key fields:**
+- Board name and description
+- Visibility settings
+- Organization association
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/trello.py"
+>
+  Explore the Trello connector implementation on GitHub
+</Card>

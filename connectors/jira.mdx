@@ -1,0 +1,83 @@
+---
+title: Jira
+description: Connect Jira to Airweave to sync projects, issues, and test cases
+---
+
+Connect Jira to Airweave to make your project management and issue tracking data searchable by AI agents.
+
+## What Gets Synced
+
+The Jira connector syncs:
+
+- **Projects** - Jira projects and metadata
+- **Issues** - Issues, bugs, stories, epics, and tasks
+- **Test Cases** - Zephyr Scale test cases (if configured)
+- **Test Cycles** - Zephyr Scale test execution cycles
+- **Test Plans** - Zephyr Scale test planning data
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Configuration
+
+### Project Keys (Required)
+
+You must specify which Jira projects to sync using their project keys (e.g., `PROJ`, `DEV`, `MARKET`).
+
+### Zephyr Scale Integration (Optional)
+
+If you use Zephyr Scale for test management, provide your Zephyr Scale API token to sync test cases, cycles, and plans.
+
+## Setup
+
+<Steps>
+  <Step title="Add Jira Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Jira**.
+  </Step>
+  
+  <Step title="Configure Projects">
+    Enter the project keys you want to sync (e.g., `PROJ`, `ENG`). You can find project keys in your Jira project settings.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Jira instance.
+  </Step>
+  
+  <Step title="Optional: Add Zephyr Scale Token">
+    If using Zephyr Scale, enter your API token to sync test management data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Jira Issues
+
+Complete issue data including description, status, and custom fields.
+
+**Key fields:**
+- Issue key (e.g., PROJ-123)
+- Summary and description
+- Status and issue type
+- Created/updated timestamps
+- Project association
+
+### Zephyr Scale Test Cases
+
+Test cases with keys like PROJECT-T1, PROJECT-T2.
+
+**Key fields:**
+- Test case key and name
+- Objective and preconditions
+- Status and priority
+- Project and folder path
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/jira.py"
+>
+  Explore the Jira connector implementation on GitHub
+</Card>

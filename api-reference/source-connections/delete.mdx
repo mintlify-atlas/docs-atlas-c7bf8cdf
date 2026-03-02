@@ -1,0 +1,109 @@
+---
+title: 'Delete Source Connection'
+api: 'DELETE /v1/source-connections/{id}'
+description: 'Permanently delete a source connection and all its synced data'
+---
+
+## Overview
+
+Permanently delete a source connection and all its data.
+
+**What happens when you delete:**
+
+1. Any running sync is cancelled and the API waits (up to 15s) for the worker to stop writing
+2. The source connection, sync configuration, job history, and entity metadata are cascade-deleted from the database
+3. A background cleanup workflow is scheduled to remove data from the vector database (Vespa) and raw data storage (ARF)
+
+The API returns immediately after step 2. Vector database cleanup happens asynchronously—the data becomes unsearchable as soon as the database records are deleted.
+
+<Warning>
+This action cannot be undone. All synced data will be permanently deleted.
+</Warning>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the source connection to delete
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Response
+
+Returns the deleted source connection object.
+
+<ResponseField name="id" type="string" required>
+  UUID of the deleted connection
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Name of the deleted connection
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Final status of the connection
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.delete(url, headers=headers)
+deleted_connection = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, {
+  method: 'DELETE',
+  headers: headers
+});
+const deletedConnection = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "GitHub Docs Repo",
+  "description": "Main documentation repository",
+  "short_name": "github",
+  "readable_collection_id": "documentation-ab123",
+  "status": "ACTIVE",
+  "created_at": "2024-03-15T09:30:00Z",
+  "modified_at": "2024-03-15T14:22:15Z",
+  "auth": {
+    "method": "direct",
+    "authenticated": true
+  },
+  "config": {
+    "repo_name": "company/docs",
+    "branch": "main"
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Source connection with the specified ID does not exist
+</ResponseField>

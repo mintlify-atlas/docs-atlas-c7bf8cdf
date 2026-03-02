@@ -1,0 +1,57 @@
+---
+title: OneDrive
+description: Connect OneDrive to Airweave to sync files and folders
+---
+
+Connect OneDrive to Airweave to make your Microsoft files searchable by AI agents.
+
+## What Gets Synced
+
+The OneDrive connector syncs:
+
+- **Drives** - Personal and business drives
+- **Files** - All files with metadata
+- **Folders** - Folder structure
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication via Microsoft Graph API.
+
+## Setup
+
+<Steps>
+  <Step title="Add OneDrive Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **OneDrive**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and sign in with your Microsoft account.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your OneDrive files.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### OneDrive Files
+
+Files and folders with Microsoft Graph metadata.
+
+**Key fields:**
+- File name and description
+- MIME type and size
+- Parent folder
+- Created/modified by
+- Web URL
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/onedrive.py"
+>
+  Explore the OneDrive connector implementation on GitHub
+</Card>

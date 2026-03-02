@@ -1,0 +1,82 @@
+---
+title: Salesforce
+description: Connect Salesforce to Airweave to sync CRM data
+---
+
+Connect Salesforce to Airweave to make your CRM data searchable by AI agents.
+
+## What Gets Synced
+
+The Salesforce connector syncs:
+
+- **Accounts** - Companies and organizations
+- **Contacts** - People and leads
+- **Opportunities** - Deals and sales prospects
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials.
+
+## Configuration
+
+### Instance URL (Auto-populated)
+
+Your Salesforce instance domain is automatically extracted from the OAuth response.
+
+## Setup
+
+<Steps>
+  <Step title="Create Salesforce Connected App">
+    In Salesforce Setup, create a Connected App with OAuth enabled.
+  </Step>
+  
+  <Step title="Add Salesforce Connection">
+    In Airweave, enter your Client ID and Client Secret.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Complete the OAuth flow to grant Airweave access to your Salesforce org.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Salesforce Accounts
+
+Company and organization records.
+
+**Key fields:**
+- Account name and number
+- Industry and revenue
+- Billing/shipping addresses
+- Created/updated timestamps
+
+### Salesforce Contacts
+
+People and leads.
+
+**Key fields:**
+- Contact name and email
+- Phone numbers
+- Job title and department
+- Associated account
+
+### Salesforce Opportunities
+
+Deals and sales pipeline.
+
+**Key fields:**
+- Opportunity name and amount
+- Stage and probability
+- Close date
+- Associated account
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/salesforce.py"
+>
+  Explore the Salesforce connector implementation on GitHub
+</Card>

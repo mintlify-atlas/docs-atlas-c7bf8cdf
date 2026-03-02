@@ -1,0 +1,84 @@
+---
+title: Box
+description: Connect Box to Airweave to sync files, folders, and collaborations
+---
+
+Connect Box to Airweave to make your enterprise files searchable by AI agents.
+
+## What Gets Synced
+
+The Box connector syncs:
+
+- **Folders** - Folder hierarchy and metadata
+- **Files** - All files with versions and metadata
+- **Comments** - File and folder comments
+- **Users** - User accounts and info
+- **Collaborations** - Sharing and permissions
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Configuration
+
+### Folder ID (Optional)
+
+Sync a specific folder by ID (default is `0` for root/all files). Find folder IDs in Box URLs when viewing folders.
+
+## Setup
+
+<Steps>
+  <Step title="Add Box Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Box**.
+  </Step>
+  
+  <Step title="Configure Folder">
+    Enter a specific folder ID to sync, or leave as `0` to sync all files.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Box account.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Box Files
+
+Files with version history and metadata.
+
+**Key fields:**
+- File name and description
+- SHA1 hash and version
+- Created/modified by
+- Comment count
+- Parent folder path
+
+### Box Folders
+
+Folder containers with permissions.
+
+**Key fields:**
+- Folder name and description
+- Path from root
+- Owner and permissions
+- Shared link info
+
+### Box Comments
+
+Comments on files.
+
+**Key fields:**
+- Comment message
+- Author and timestamp
+- Associated file
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/box.py"
+>
+  Explore the Box connector implementation on GitHub
+</Card>

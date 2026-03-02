@@ -1,0 +1,74 @@
+---
+title: HubSpot
+description: Connect HubSpot to Airweave to sync CRM data
+---
+
+Connect HubSpot to Airweave to make your CRM and marketing data searchable by AI agents.
+
+## What Gets Synced
+
+The HubSpot connector syncs:
+
+- **Contacts** - Contact records with all properties
+- **Companies** - Company records
+- **Deals** - Deal pipeline data
+- **Tickets** - Support tickets
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Add HubSpot Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **HubSpot**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your HubSpot account.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your HubSpot data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### HubSpot Contacts
+
+Contact records with flexible properties.
+
+**Key fields:**
+- Name and email
+- All custom properties
+- Created/updated timestamps
+
+### HubSpot Companies
+
+Company records.
+
+**Key fields:**
+- Company name
+- Domain
+- All custom properties
+
+### HubSpot Deals
+
+Deal pipeline data.
+
+**Key fields:**
+- Deal name
+- Amount
+- All custom properties
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/hubspot.py"
+>
+  Explore the HubSpot connector implementation on GitHub
+</Card>

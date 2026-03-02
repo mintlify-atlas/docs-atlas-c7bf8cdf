@@ -1,0 +1,166 @@
+---
+title: 'List Sync Jobs'
+api: 'GET /v1/source-connections/{id}/jobs'
+description: 'Retrieve the sync job history for a source connection'
+---
+
+## Overview
+
+Retrieve the sync job history for a source connection. Returns a list of sync jobs ordered by creation time (newest first).
+
+Each job includes status, timing information, and entity counts.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the source connection
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="limit" type="integer" default={100}>
+  Maximum number of jobs to return (1-1000)
+</ParamField>
+
+## Response
+
+Returns an array of sync job objects.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the sync job
+</ResponseField>
+
+<ResponseField name="source_connection_id" type="string" required>
+  ID of the source connection this job belongs to
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Job status: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, or `CANCELLING`
+</ResponseField>
+
+<ResponseField name="started_at" type="string">
+  When the job started execution (ISO 8601)
+</ResponseField>
+
+<ResponseField name="completed_at" type="string">
+  When the job finished (ISO 8601)
+</ResponseField>
+
+<ResponseField name="duration_seconds" type="number">
+  Total execution time in seconds
+</ResponseField>
+
+<ResponseField name="entities_inserted" type="integer" required>
+  Number of new entities created
+</ResponseField>
+
+<ResponseField name="entities_updated" type="integer" required>
+  Number of existing entities updated
+</ResponseField>
+
+<ResponseField name="entities_deleted" type="integer" required>
+  Number of entities removed
+</ResponseField>
+
+<ResponseField name="entities_failed" type="integer" required>
+  Number of entities that failed to process
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the job failed
+</ResponseField>
+
+<ResponseField name="error_details" type="object">
+  Additional error context for debugging
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000/jobs?limit=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000/jobs"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+params = {"limit": 10}
+
+response = requests.get(url, headers=headers, params=params)
+jobs = response.json()
+
+for job in jobs:
+    print(f"Job {job['id']}: {job['status']}")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000/jobs?limit=10';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const jobs = await response.json();
+
+jobs.forEach(job => {
+  console.log(`Job ${job.id}: ${job.status}`);
+});
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+[
+  {
+    "id": "770e8400-e29b-41d4-a716-446655440002",
+    "source_connection_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "COMPLETED",
+    "started_at": "2024-03-15T12:00:00Z",
+    "completed_at": "2024-03-15T12:05:32Z",
+    "duration_seconds": 332.5,
+    "entities_inserted": 45,
+    "entities_updated": 12,
+    "entities_deleted": 3,
+    "entities_failed": 0,
+    "error": null,
+    "error_details": null
+  },
+  {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "source_connection_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "FAILED",
+    "started_at": "2024-03-14T08:00:15Z",
+    "completed_at": null,
+    "duration_seconds": null,
+    "entities_inserted": 0,
+    "entities_updated": 0,
+    "entities_deleted": 0,
+    "entities_failed": 0,
+    "error": "Authentication failed: GitHub personal access token is invalid or expired",
+    "error_details": null
+  }
+]
+```
+
+## Job Statuses
+
+- **PENDING**: Job is queued, waiting for the worker to pick it up
+- **RUNNING**: Sync is actively pulling and processing data
+- **COMPLETED**: Sync finished successfully
+- **FAILED**: Sync encountered an unrecoverable error
+- **CANCELLING**: Cancellation has been requested. Worker is stopping.
+- **CANCELLED**: Sync was cancelled
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Source connection with the specified ID does not exist
+</ResponseField>

@@ -1,0 +1,551 @@
+---
+title: 'Docker Compose Deployment'
+description: 'Deploy Airweave locally or on a single server using Docker Compose'
+---
+
+## Quick Start
+
+The fastest way to run Airweave is using the included `start.sh` script:
+
+```bash
+git clone https://github.com/airweave-ai/airweave.git
+cd airweave
+./start.sh
+```
+
+<Info>
+  **Prerequisites**:
+  - Docker 20.10+ and Docker Compose (or `docker compose` plugin)
+  - 4GB+ RAM available
+  - Ports 5432, 6379, 7233, 8001, 8080, 8081, 8088 available
+</Info>
+
+The script will:
+1. Create `.env` from `.env.example` if needed
+2. Generate encryption keys automatically
+3. Start all required services with health checks
+4. Optionally prompt for API keys (OpenAI, Mistral)
+
+→ Access the UI at **http://localhost:8080**
+
+## What the Script Does
+
+The `start.sh` script orchestrates a complete deployment:
+
+<Steps>
+  <Step title="Environment Setup">
+    - Creates `.env` from template if missing
+    - Generates `ENCRYPTION_KEY` (32-byte base64)
+    - Generates `STATE_SECRET` for OAuth flows
+    - Sets `SKIP_AZURE_STORAGE=true` for local filesystem storage
+  </Step>
+
+  <Step title="Embedding Configuration">
+    Auto-detects embedding provider based on available API keys:
+    
+    **Priority order**:
+    1. OpenAI (1536 dimensions) - if `OPENAI_API_KEY` is set
+    2. Mistral (1024 dimensions) - if `MISTRAL_API_KEY` is set
+    3. Local embeddings (384 dimensions) - uses ~2GB RAM
+    
+    Configures:
+    - `DENSE_EMBEDDER` - embedding model
+    - `EMBEDDING_DIMENSIONS` - vector dimensions
+    - `SPARSE_EMBEDDER=fastembed_bm25` - keyword search
+  </Step>
+
+  <Step title="Service Startup">
+    Starts services using Docker Compose profiles:
+    
+    ```bash
+    docker compose -f docker/docker-compose.yml \
+      --profile vespa \
+      --profile frontend \
+      --profile local-embeddings \
+      up -d
+    ```
+    
+    Services start in dependency order (PostgreSQL → Redis → Temporal → Backend → Frontend)
+  </Step>
+
+  <Step title="Health Checks">
+    Waits for critical services to be ready:
+    
+    - **Vespa**: Document API responding (up to 5 minutes)
+    - **Backend**: `/health/ready` endpoint (up to 5 minutes)
+    - **Frontend**: HTTP 200 response
+    
+    Shows real-time progress with retry counters
+  </Step>
+
+  <Step title="Verification">
+    Displays service status with URLs:
+    
+    ```
+    ✅ Backend API     http://localhost:8001
+    ✅ Frontend UI     http://localhost:8080
+    📊 Temporal UI     http://localhost:8088
+    🗄️ PostgreSQL      localhost:5432
+    🔎 Vespa           http://localhost:8081
+    🤖 Embeddings      http://localhost:9878 (local)
+    ```
+  </Step>
+</Steps>
+
+## Script Options
+
+### Interactive Mode (Default)
+
+```bash
+./start.sh
+```
+
+Prompts for API keys if not already configured.
+
+### Non-Interactive Mode
+
+```bash
+NONINTERACTIVE=1 ./start.sh
+# or
+./start.sh --noninteractive
+```
+
+Skips all prompts - useful for CI/CD or automated deployments.
+
+### Skip Frontend
+
+```bash
+./start.sh --skip-frontend
+```
+
+Starts only backend services (API, database, workers). Useful for:
+- API-only integrations
+- Headless deployments
+- Resource-constrained environments
+
+### Skip Local Embeddings
+
+```bash
+./start.sh --skip-local-embeddings
+```
+
+Saves ~2GB RAM by not starting the local embedding service. Requires either:
+- `OPENAI_API_KEY` for OpenAI embeddings
+- `MISTRAL_API_KEY` for Mistral embeddings
+
+### Restart Services
+
+```bash
+./start.sh --restart
+```
+
+Restarts existing containers without recreating them. Preserves:
+- Database data
+- Vespa indices
+- Redis cache
+- Environment configuration
+
+### Recreate Containers
+
+```bash
+./start.sh --recreate
+```
+
+Removes and recreates all containers while keeping volumes (data persists).
+
+### Destroy Everything
+
+```bash
+./start.sh --destroy
+```
+
+<Warning>
+  Removes all containers, volumes, and data. Cannot be undone!
+</Warning>
+
+Prompts for confirmation unless `--noninteractive` is set.
+
+### Debug Mode
+
+```bash
+VERBOSE=1 ./start.sh
+# or
+./start.sh --verbose
+```
+
+Enables detailed logging and shell debugging (`set -x`).
+
+### Combined Options
+
+```bash
+# Backend-only with OpenAI embeddings
+./start.sh --skip-frontend --skip-local-embeddings
+
+# Automated deployment for CI
+NONINTERACTIVE=1 SKIP_FRONTEND=1 ./start.sh
+
+# Fresh start with debugging
+./start.sh --recreate --verbose
+```
+
+## Docker Compose Architecture
+
+The `docker/docker-compose.yml` file defines all services:
+
+### Service Profiles
+
+Services are organized using profiles for selective startup:
+
+| Profile | Services | When to Use |
+|---------|----------|-------------|
+| (default) | postgres, redis, backend, temporal, svix | Always included |
+| `vespa` | vespa, vespa-init | Vector search (required) |
+| `frontend` | frontend | Web UI (optional) |
+| `local-embeddings` | text2vec-transformers | Local embedding generation |
+
+### Networking
+
+All services run on the default Docker bridge network:
+
+- Services communicate using container names (e.g., `postgres`, `redis`)
+- Host services accessible via `host.docker.internal` (enabled for backend and svix)
+- External ports exposed for direct access from host
+
+### Volume Mounts
+
+<CodeGroup>
+
+```yaml Development Mounts
+backend:
+  volumes:
+    - ../backend:/app              # Live code reload
+    - ../local_storage:/app/local_storage  # File storage
+
+temporal-worker:
+  volumes:
+    - ../backend:/app              # Shared code with backend
+
+vespa:
+  volumes:
+    - vespa_data:/opt/vespa/var    # Persistent index
+    - ../vespa/app:/app            # Schema files
+```
+
+```yaml Data Volumes
+volumes:
+  postgres_data:   # Database files
+  redis_data:      # Redis persistence
+  vespa_data:      # Vector indices
+```
+
+</CodeGroup>
+
+### Environment Variables
+
+Services load configuration from:
+
+1. **Root `.env` file** (via `env_file: ../.env`)
+2. **Inline overrides** for container networking
+
+Example for backend service:
+
+```yaml
+backend:
+  env_file:
+    - ../.env
+  environment:
+    # Container network overrides
+    - POSTGRES_HOST=postgres        # Not localhost
+    - REDIS_HOST=redis
+    - VESPA_URL=http://vespa
+    - TEMPORAL_HOST=temporal
+    - TEXT2VEC_INFERENCE_URL=http://text2vec-transformers:8080
+```
+
+## Manual Docker Compose Usage
+
+### Start All Services
+
+```bash
+cd docker
+docker compose --profile vespa --profile frontend up -d
+```
+
+### View Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker logs -f airweave-backend
+docker logs -f airweave-vespa-init
+```
+
+### Check Service Status
+
+```bash
+docker compose ps
+```
+
+### Stop Services
+
+```bash
+# Stop but keep containers
+docker compose stop
+
+# Remove containers (keeps volumes)
+docker compose down
+
+# Remove everything including volumes
+docker compose down --volumes
+```
+
+### Restart Single Service
+
+```bash
+docker compose restart backend
+docker compose restart temporal-worker
+```
+
+### Access Service Shells
+
+```bash
+# Backend Python shell
+docker exec -it airweave-backend bash
+
+# PostgreSQL console
+docker exec -it airweave-db psql -U airweave -d airweave
+
+# Redis CLI
+docker exec -it airweave-redis redis-cli
+```
+
+## Health Checks
+
+All services include health checks for reliable startup:
+
+<AccordionGroup>
+  <Accordion title="PostgreSQL">
+    ```yaml
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airweave"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ```
+  </Accordion>
+
+  <Accordion title="Backend API">
+    ```yaml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health/ready"]
+      interval: 10s
+      timeout: 30s
+      retries: 10
+      start_period: 60s
+    ```
+    
+    Includes 60s startup grace period for database migrations.
+  </Accordion>
+
+  <Accordion title="Vespa">
+    ```yaml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19071/state/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    ```
+    
+    The `vespa-init` container deploys the application schema after Vespa is healthy.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    **Error**: `Bind for 0.0.0.0:8080 failed: port is already allocated`
+    
+    **Solution**:
+    1. Check what's using the port:
+       ```bash
+       lsof -i :8080
+       netstat -tuln | grep 8080
+       ```
+    2. Stop the conflicting service or change Airweave's port:
+       ```bash
+       # In .env
+       FRONTEND_LOCAL_DEVELOPMENT_PORT=8081
+       ```
+    3. Restart: `./start.sh --restart`
+  </Accordion>
+
+  <Accordion title="Vespa init failed">
+    **Symptoms**: `vespa-init` container exits with non-zero code
+    
+    **Debug**:
+    ```bash
+    docker logs airweave-vespa-init
+    docker logs airweave-vespa
+    curl http://localhost:8081/state/v1/health
+    ```
+    
+    **Common causes**:
+    - Embedding dimensions mismatch (check `.env` for `EMBEDDING_DIMENSIONS`)
+    - Vespa not fully initialized (wait 30s and try `./start.sh --restart`)
+    - Disk space full
+  </Accordion>
+
+  <Accordion title="Backend not starting">
+    **Check logs**:
+    ```bash
+    docker logs airweave-backend
+    ```
+    
+    **Common issues**:
+    - Missing environment variables (check `.env`)
+    - Database migration failures
+    - Port conflicts
+    
+    **Verify database connection**:
+    ```bash
+    docker exec airweave-backend \
+      poetry run python -c "from airweave.db.engine import get_session; next(get_session())"
+    ```
+  </Accordion>
+
+  <Accordion title="Out of memory">
+    **Symptoms**: Services crashing, slow performance
+    
+    **Check Docker resources**:
+    ```bash
+    docker stats
+    ```
+    
+    **Solutions**:
+    - Skip local embeddings: `./start.sh --skip-local-embeddings`
+    - Increase Docker Desktop memory limit (Settings → Resources)
+    - Use cloud embeddings (OpenAI/Mistral)
+  </Accordion>
+
+  <Accordion title="Temporal workflows failing">
+    **Check Temporal UI**: http://localhost:8088
+    
+    **View worker logs**:
+    ```bash
+    docker logs airweave-temporal-worker
+    ```
+    
+    **Restart worker**:
+    ```bash
+    docker compose restart temporal-worker
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Considerations
+
+<Warning>
+  Docker Compose is suitable for development and small production deployments. For enterprise production use, consider [Kubernetes](/deployment/kubernetes).
+</Warning>
+
+### Security
+
+<Steps>
+  <Step title="Change default credentials">
+    Update in `.env`:
+    ```bash
+    POSTGRES_PASSWORD=<strong-password>
+    FIRST_SUPERUSER_PASSWORD=<strong-password>
+    ENCRYPTION_KEY=<regenerate>
+    STATE_SECRET=<regenerate>
+    SVIX_JWT_SECRET=<regenerate>
+    ```
+  </Step>
+
+  <Step title="Enable authentication">
+    ```bash
+    AUTH_ENABLED=true
+    AUTH0_DOMAIN=your-tenant.auth0.com
+    AUTH0_AUDIENCE=https://your-api
+    ```
+  </Step>
+
+  <Step title="Use HTTPS">
+    Place a reverse proxy (nginx, Caddy, Traefik) in front of the frontend and backend.
+  </Step>
+
+  <Step title="Restrict network access">
+    Remove port exposures and use a reverse proxy, or bind to localhost:
+    ```yaml
+    ports:
+      - "127.0.0.1:8001:8001"  # Only accessible from host
+    ```
+  </Step>
+</Steps>
+
+### Backups
+
+<CodeGroup>
+
+```bash PostgreSQL Backup
+# Create backup
+docker exec airweave-db pg_dump -U airweave airweave > backup.sql
+
+# Restore
+cat backup.sql | docker exec -i airweave-db psql -U airweave airweave
+```
+
+```bash Volume Backup
+# Backup all volumes
+docker run --rm \
+  -v airweave_postgres_data:/source:ro \
+  -v $(pwd):/backup \
+  alpine tar czf /backup/postgres_data.tar.gz -C /source .
+
+# Restore
+docker run --rm \
+  -v airweave_postgres_data:/target \
+  -v $(pwd):/backup \
+  alpine tar xzf /backup/postgres_data.tar.gz -C /target
+```
+
+</CodeGroup>
+
+### Monitoring
+
+```bash
+# Service health
+curl http://localhost:8001/health
+curl http://localhost:8001/health/ready
+
+# Metrics (if enabled)
+curl http://localhost:9090/metrics
+
+# Resource usage
+docker stats --no-stream
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Configure Environment" icon="gear" href="/deployment/configuration">
+  Explore all environment variables and configuration options
+</Card>
+
+<Card title="Add Connectors" icon="plug" href="/connectors/overview">
+  Connect to your data sources
+</Card>
+
+<Card title="Use the API" icon="code" href="/api-reference/authentication">
+  Start building with the REST API
+</Card>
+
+<Card title="Upgrade to Kubernetes" icon="dharmachakra" href="/deployment/kubernetes">
+  Scale to production with Kubernetes
+</Card>
+
+</CardGroup>

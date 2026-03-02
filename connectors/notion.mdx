@@ -1,0 +1,91 @@
+---
+title: Notion
+description: Connect Notion to Airweave to sync databases, pages, and content
+---
+
+Connect your Notion workspace to Airweave to make databases, pages, and content searchable by AI agents.
+
+## What Gets Synced
+
+The Notion connector syncs:
+
+- **Databases** - Database schemas, properties, and metadata
+- **Pages** - Page content, properties, and relationships
+- **Properties** - All custom properties and their values
+- **Files** - File attachments and embedded media
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication. When you connect Notion through the Airweave UI, you'll be prompted to authorize access to your Notion workspace.
+
+## Setup
+
+<Steps>
+  <Step title="Add Notion Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Notion**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Notion workspace.
+  </Step>
+  
+  <Step title="Start Sync">
+    Once authorized, Airweave will begin syncing your Notion content.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Notion Databases
+
+Database metadata including title, description, properties schema, and configuration.
+
+**Key fields:**
+- Database ID and title
+- Created/updated timestamps
+- Property definitions
+- Parent page/workspace info
+
+### Notion Pages
+
+Full page content with aggregated text from all blocks.
+
+**Key fields:**
+- Page ID and title  
+- Created/updated timestamps
+- Full aggregated content
+- Properties and property values
+- Parent database/page
+- File attachments
+
+### Notion Properties
+
+Individual property values from database pages.
+
+**Key fields:**
+- Property name and type
+- Formatted value
+- Associated page and database
+
+### Notion Files
+
+File attachments and embedded media.
+
+**Key fields:**
+- File name and URL
+- Expiry time (for Notion-hosted files)
+- Caption text
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/notion.py"
+>
+  Explore the Notion connector implementation on GitHub
+</Card>
+
+<Note>
+The Notion connector uses the official Notion API and supports both databases and hierarchical pages. Content from nested blocks is automatically aggregated for search.
+</Note>

@@ -1,0 +1,59 @@
+---
+title: Google Calendar
+description: Connect Google Calendar to Airweave to sync events
+---
+
+Connect Google Calendar to Airweave to make your calendar events searchable by AI agents.
+
+## What Gets Synced
+
+The Google Calendar connector syncs:
+
+- **Calendars** - Calendar metadata
+- **Calendar Lists** - User's calendar list entries
+- **Events** - Calendar events with attendees
+- **Free/Busy** - Availability information
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials (same as Gmail/Drive).
+
+## Setup
+
+<Steps>
+  <Step title="Set Up Google Cloud OAuth">
+    Follow the Gmail/Drive setup to configure OAuth with Google Calendar API scope:
+    - `https://www.googleapis.com/auth/calendar.readonly`
+  </Step>
+  
+  <Step title="Add Google Calendar Connection">
+    In Airweave, use the same OAuth credentials as Gmail/Drive.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Complete the OAuth flow.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Google Calendar Events
+
+Calendar events with full details.
+
+**Key fields:**
+- Event title and description
+- Start/end date and time
+- Attendees and organizer
+- Location
+- Recurrence rules
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/google_calendar.py"
+>
+  Explore the Google Calendar connector implementation on GitHub
+</Card>

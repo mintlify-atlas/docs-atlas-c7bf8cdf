@@ -1,0 +1,410 @@
+---
+title: Collections
+description: Organize and manage data sources with collections
+---
+
+Collections are containers that group related data from one or more source connections, enabling unified search across multiple data sources. Think of them as logical databases where you organize your integrated data.
+
+## Overview
+
+A collection serves as a namespace for your data sources. When you create a collection, Airweave:
+
+- Assigns a unique `readable_id` for use in API calls and URLs
+- Configures vector storage with your organization's embedding model
+- Sets up a dedicated search endpoint
+- Creates a container for source connections to sync data into
+
+<Note>
+Collections are isolated per organization. Each collection can have its own sync configuration and contains data from one or more authenticated source connections.
+</Note>
+
+## Creating a Collection
+
+Create a new collection to start organizing your data sources.
+
+<Steps>
+  <Step title="Choose a descriptive name">
+    Pick a name that clearly identifies the data contained within (e.g., "Customer Support", "Finance Data", "Engineering Docs").
+  </Step>
+  
+  <Step title="Optionally set a readable_id">
+    If you don't provide one, Airweave will auto-generate a URL-safe identifier from your collection name with a random suffix (e.g., `customer-support-x7k9m`).
+  </Step>
+  
+  <Step title="Create via API or SDK">
+    Use the REST API or SDK to create your collection.
+  </Step>
+</Steps>
+
+<CodeGroup>
+```python Python
+from airweave import AirweaveSDK
+
+client = AirweaveSDK(api_key="YOUR_API_KEY")
+
+# Simple creation with auto-generated readable_id
+collection = client.collections.create(
+    name="Customer Support"
+)
+
+print(f"Collection ID: {collection.readable_id}")
+# Output: customer-support-x7k9m
+
+# Creation with custom readable_id
+collection = client.collections.create(
+    name="Finance Reports",
+    readable_id="finance-data-2024"
+)
+```
+
+```typescript TypeScript
+import { AirweaveSDKClient } from "@airweave/sdk";
+
+const client = new AirweaveSDKClient({ 
+  apiKey: "YOUR_API_KEY" 
+});
+
+// Simple creation with auto-generated readable_id
+const collection = await client.collections.create({
+  name: "Customer Support"
+});
+
+console.log(`Collection ID: ${collection.readable_id}`);
+// Output: customer-support-x7k9m
+
+// Creation with custom readable_id
+const collection2 = await client.collections.create({
+  name: "Finance Reports",
+  readableId: "finance-data-2024"
+});
+```
+
+```bash cURL
+curl -X POST "https://api.airweave.ai/v1/collections" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Customer Support"
+  }'
+
+# With custom readable_id
+curl -X POST "https://api.airweave.ai/v1/collections" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Finance Reports",
+    "readable_id": "finance-data-2024"
+  }'
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField path="name" type="string" required>
+  Human-readable display name for the collection. Must be between 4 and 64 characters.
+  
+  Examples: `"Finance Data"`, `"Customer Support"`, `"Marketing Analytics"`
+</ParamField>
+
+<ParamField path="readable_id" type="string">
+  URL-safe unique identifier. Must contain only lowercase letters, numbers, and hyphens. 
+  Cannot start or end with a hyphen.
+  
+  If not provided, automatically generated from the name with a random 6-character suffix.
+  
+  Examples: `"finance-data-ab123"`, `"customer-support-xy789"`
+</ParamField>
+
+<ParamField path="sync_config" type="object">
+  Optional default sync configuration for all syncs in this collection. Can be overridden at the sync or job level.
+  
+  ```json
+  {
+    "handlers": {
+      "enable_vector_handlers": true,
+      "enable_postgres_handler": true
+    }
+  }
+  ```
+</ParamField>
+
+### Response Fields
+
+The API returns a `Collection` object with the following fields:
+
+<ParamField path="id" type="UUID">
+  Unique system identifier (auto-generated)
+</ParamField>
+
+<ParamField path="name" type="string">
+  Display name of the collection
+</ParamField>
+
+<ParamField path="readable_id" type="string">
+  URL-safe identifier for API endpoints
+</ParamField>
+
+<ParamField path="status" type="string">
+  Current operational status:
+  - `NEEDS_SOURCE`: No authenticated connections or no successful syncs yet
+  - `ACTIVE`: At least one connection has completed a sync
+  - `ERROR`: All connections failed their last sync
+</ParamField>
+
+<ParamField path="vector_size" type="integer">
+  Embedding dimensions (derived from deployment metadata)
+</ParamField>
+
+<ParamField path="embedding_model_name" type="string">
+  Name of the embedding model (e.g., `"text-embedding-3-large"`)
+</ParamField>
+
+<ParamField path="organization_id" type="UUID">
+  Your organization identifier
+</ParamField>
+
+<ParamField path="created_at" type="ISO 8601 datetime">
+  Timestamp when created
+</ParamField>
+
+<ParamField path="modified_at" type="ISO 8601 datetime">
+  Timestamp of last modification
+</ParamField>
+
+## Listing Collections
+
+Retrieve all collections in your organization with optional pagination and search filtering.
+
+<CodeGroup>
+```python Python
+# List all collections
+collections = client.collections.list()
+
+# Paginated listing
+collections = client.collections.list(
+    skip=0,
+    limit=50
+)
+
+# Search by name or readable_id
+collections = client.collections.list(
+    search="customer"
+)
+
+# Get total count
+count = client.collections.count()
+print(f"Total collections: {count}")
+```
+
+```typescript TypeScript
+// List all collections
+const collections = await client.collections.list();
+
+// Paginated listing
+const collections = await client.collections.list({
+  skip: 0,
+  limit: 50
+});
+
+// Search by name or readable_id
+const collections = await client.collections.list({
+  search: "customer"
+});
+
+// Get total count
+const count = await client.collections.count();
+console.log(`Total collections: ${count}`);
+```
+
+```bash cURL
+# List all collections
+curl -X GET "https://api.airweave.ai/v1/collections" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Paginated with search
+curl -X GET "https://api.airweave.ai/v1/collections?skip=0&limit=50&search=customer" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Get count
+curl -X GET "https://api.airweave.ai/v1/collections/count" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="skip" type="integer" default="0">
+  Number of collections to skip for pagination (min: 0)
+</ParamField>
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum number of collections to return (1-1000)
+</ParamField>
+
+<ParamField query="search" type="string">
+  Filter collections by name or readable_id (case-insensitive partial match)
+</ParamField>
+
+## Getting a Collection
+
+Retrieve details of a specific collection by its `readable_id`.
+
+<CodeGroup>
+```python Python
+collection = client.collections.get(
+    readable_id="customer-support-x7k9m"
+)
+
+print(f"Name: {collection.name}")
+print(f"Status: {collection.status}")
+print(f"Model: {collection.embedding_model_name}")
+```
+
+```typescript TypeScript
+const collection = await client.collections.get(
+  "customer-support-x7k9m"
+);
+
+console.log(`Name: ${collection.name}`);
+console.log(`Status: ${collection.status}`);
+console.log(`Model: ${collection.embeddingModelName}`);
+```
+
+```bash cURL
+curl -X GET "https://api.airweave.ai/v1/collections/customer-support-x7k9m" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+</CodeGroup>
+
+## Updating a Collection
+
+Modify a collection's name or sync configuration. The `readable_id` cannot be changed after creation.
+
+<CodeGroup>
+```python Python
+# Update collection name
+updated = client.collections.update(
+    readable_id="customer-support-x7k9m",
+    name="Customer Support Archive"
+)
+
+# Update sync configuration
+updated = client.collections.update(
+    readable_id="finance-data-2024",
+    sync_config={
+        "handlers": {
+            "enable_vector_handlers": True,
+            "enable_postgres_handler": False
+        }
+    }
+)
+```
+
+```typescript TypeScript
+// Update collection name
+const updated = await client.collections.update(
+  "customer-support-x7k9m",
+  {
+    name: "Customer Support Archive"
+  }
+);
+
+// Update sync configuration
+const updated2 = await client.collections.update(
+  "finance-data-2024",
+  {
+    syncConfig: {
+      handlers: {
+        enableVectorHandlers: true,
+        enablePostgresHandler: false
+      }
+    }
+  }
+);
+```
+
+```bash cURL
+curl -X PATCH "https://api.airweave.ai/v1/collections/customer-support-x7k9m" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Customer Support Archive"
+  }'
+```
+</CodeGroup>
+
+<Warning>
+The `readable_id` is immutable to maintain stable API endpoints and preserve existing integrations. Only the `name` and `sync_config` can be updated.
+</Warning>
+
+## Deleting a Collection
+
+Permanently delete a collection and all associated data. This operation cannot be undone.
+
+<CodeGroup>
+```python Python
+deleted = client.collections.delete(
+    readable_id="customer-support-x7k9m"
+)
+
+print(f"Deleted: {deleted.name}")
+```
+
+```typescript TypeScript
+const deleted = await client.collections.delete(
+  "customer-support-x7k9m"
+);
+
+console.log(`Deleted: ${deleted.name}`);
+```
+
+```bash cURL
+curl -X DELETE "https://api.airweave.ai/v1/collections/customer-support-x7k9m" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+</CodeGroup>
+
+<Warning>
+**This action cannot be undone.** Deleting a collection:
+
+- Removes all synced data from the vector database
+- Deletes all source connections within the collection
+- Cancels any scheduled sync jobs
+- Cleans up all related resources
+
+All data will be permanently deleted.
+</Warning>
+
+## Collection Status
+
+Collections have three possible statuses that reflect their operational state:
+
+<Accordion title="NEEDS_SOURCE">
+  The collection has no authenticated source connections, or connections exist but haven't completed a successful sync yet. 
+  
+  **Next steps:** Add and authenticate a source connection, then trigger a sync.
+</Accordion>
+
+<Accordion title="ACTIVE">
+  At least one source connection has completed a sync successfully, or a sync is currently running.
+  
+  **This is the normal operating state** for collections with data.
+</Accordion>
+
+<Accordion title="ERROR">
+  All source connections have failed their most recent sync attempt.
+  
+  **Action required:** Check the sync error logs and fix authentication or configuration issues.
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search" icon="magnifying-glass" href="/search">
+    Learn how to search across your collection data
+  </Card>
+  
+  <Card title="Webhooks" icon="webhook" href="/webhooks">
+    Set up real-time notifications for collection events
+  </Card>
+</CardGroup>

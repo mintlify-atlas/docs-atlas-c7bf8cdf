@@ -1,80 +1,405 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Airweave in under 10 minutes
 ---
 
-## Get started in three steps
+## Choose your deployment
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+Before you begin, decide how you want to run Airweave:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="Cloud (Recommended)"
+    icon="cloud"
+    href="https://app.airweave.ai"
+  >
+    Managed service with free tier. Get your API key from the dashboard.
+  </Card>
+  <Card
+    title="Self-hosted"
+    icon="server"
+    href="/deployment/docker"
+  >
+    Run locally with Docker. API available at `http://localhost:8001`
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  This quickstart uses the cloud deployment. For self-hosted, change `base_url` to `http://localhost:8001` in the examples below.
 </Note>
+
+## Install the SDK
+
+<CodeGroup>
+
+```bash Python
+pip install airweave-sdk
+```
+
+```bash TypeScript
+npm install @airweave/sdk
+```
+
+</CodeGroup>
+
+## Step 1: Initialize the client
+
+Get your API key from the [Airweave dashboard](https://app.airweave.ai/settings/api-keys) and initialize the client:
+
+<CodeGroup>
+
+```python Python
+from airweave import AirweaveSDK
+
+# Initialize the client
+client = AirweaveSDK(
+    api_key="YOUR_API_KEY",
+    base_url="https://api.airweave.ai"  # Use "http://localhost:8001" for self-hosted
+)
+```
+
+```typescript TypeScript
+import { AirweaveClient } from '@airweave/sdk';
+
+const client = new AirweaveClient({
+  apiKey: 'YOUR_API_KEY',
+  baseUrl: 'https://api.airweave.ai' // Use "http://localhost:8001" for self-hosted
+});
+```
+
+</CodeGroup>
+
+<Tip>
+  Store your API key in an environment variable: `export AIRWEAVE_API_KEY="your-key-here"`
+</Tip>
+
+## Step 2: Create a collection
+
+A **collection** is a searchable container that groups multiple data sources together. Think of it as a unified search index.
+
+<CodeGroup>
+
+```python Python
+# Create a collection
+collection = client.collections.create(
+    name="My First Collection"
+)
+
+print(f"Created collection: {collection.readable_id}")
+print(f"Collection ID: {collection.id}")
+
+# Output:
+# Created collection: my-first-collection-x7k9m
+# Collection ID: 550e8400-e29b-41d4-a716-446655440000
+```
+
+```typescript TypeScript
+// Create a collection
+const collection = await client.collections.create({
+  name: 'My First Collection'
+});
+
+console.log(`Created collection: ${collection.readableId}`);
+console.log(`Collection ID: ${collection.id}`);
+
+// Output:
+// Created collection: my-first-collection-x7k9m
+// Collection ID: 550e8400-e29b-41d4-a716-446655440000
+```
+
+</CodeGroup>
+
+<Info>
+  The `readable_id` is auto-generated from your collection name with a unique suffix. You'll use this ID to reference the collection in search queries.
+</Info>
+
+## Step 3: Add a source connection
+
+Now connect a data source to your collection. Source connections handle authentication and automatically sync data from your apps and databases.
+
+<Tabs>
+  <Tab title="Stripe (API Key)">
+    <CodeGroup>
+
+```python Python
+# Connect Stripe with API key
+source_connection = client.source_connections.create(
+    name="My Stripe Connection",
+    short_name="stripe",
+    readable_collection_id=collection.readable_id,
+    authentication={
+        "credentials": {
+            "api_key": "sk_test_YOUR_STRIPE_API_KEY"
+        }
+    }
+)
+
+print(f"Created: {source_connection.name}")
+print(f"Status: {source_connection.status}")
+```
+
+```typescript TypeScript
+// Connect Stripe with API key
+const sourceConnection = await client.sourceConnections.create({
+  name: 'My Stripe Connection',
+  shortName: 'stripe',
+  readableCollectionId: collection.readableId,
+  authentication: {
+    credentials: {
+      api_key: 'sk_test_YOUR_STRIPE_API_KEY'
+    }
+  }
+});
+
+console.log(`Created: ${sourceConnection.name}`);
+console.log(`Status: ${sourceConnection.status}`);
+```
+
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="GitHub (API Key)">
+    <CodeGroup>
+
+```python Python
+# Connect GitHub with personal access token
+source_connection = client.source_connections.create(
+    name="GitHub Docs Repo",
+    short_name="github",
+    readable_collection_id=collection.readable_id,
+    config={
+        "repo_name": "airweave-ai/airweave",
+        "branch": "main"
+    },
+    authentication={
+        "credentials": {
+            "personal_access_token": "ghp_YOUR_TOKEN"
+        }
+    }
+)
+
+print(f"Created: {source_connection.name}")
+print(f"Status: {source_connection.status}")
+```
+
+```typescript TypeScript
+// Connect GitHub with personal access token
+const sourceConnection = await client.sourceConnections.create({
+  name: 'GitHub Docs Repo',
+  shortName: 'github',
+  readableCollectionId: collection.readableId,
+  config: {
+    repo_name: 'airweave-ai/airweave',
+    branch: 'main'
+  },
+  authentication: {
+    credentials: {
+      personal_access_token: 'ghp_YOUR_TOKEN'
+    }
+  }
+});
+
+console.log(`Created: ${sourceConnection.name}`);
+console.log(`Status: ${sourceConnection.status}`);
+```
+
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Slack (OAuth)">
+    <CodeGroup>
+
+```python Python
+# Connect Slack with OAuth (browser flow)
+source_connection = client.source_connections.create(
+    name="Team Slack Workspace",
+    short_name="slack",
+    readable_collection_id=collection.readable_id,
+    redirect_url="https://app.example.com/connections"
+)
+
+# For OAuth sources, you'll get an auth_url to complete authentication
+print(f"Visit: {source_connection.auth.auth_url}")
+```
+
+```typescript TypeScript
+// Connect Slack with OAuth (browser flow)
+const sourceConnection = await client.sourceConnections.create({
+  name: 'Team Slack Workspace',
+  shortName: 'slack',
+  readableCollectionId: collection.readableId,
+  redirectUrl: 'https://app.example.com/connections'
+});
+
+// For OAuth sources, you'll get an auth_url to complete authentication
+console.log(`Visit: ${sourceConnection.auth.authUrl}`);
+```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>
+
+<Note>
+  Airweave will automatically start syncing data from your source. The initial sync may take a few minutes depending on data volume. You can monitor progress in the dashboard or via the API.
+</Note>
+
+## Step 4: Search your collection
+
+Once data is synced, you can search across all connected sources with natural language queries:
+
+<CodeGroup>
+
+```python Python
+# Basic search
+results = client.collections.search(
+    readable_id=collection.readable_id,
+    query="Find recent failed payments"
+)
+
+print(f"Found {len(results.results)} results\n")
+
+# Display results
+for i, result in enumerate(results.results[:3], 1):
+    payload = result['payload']
+    print(f"Result {i}:")
+    print(f"  Source: {payload['source_name']}")
+    print(f"  Content: {payload['md_content'][:100]}...")
+    print(f"  Score: {result['score']:.3f}\n")
+```
+
+```typescript TypeScript
+// Basic search
+const results = await client.collections.search({
+  readableId: collection.readableId,
+  query: 'Find recent failed payments'
+});
+
+console.log(`Found ${results.results.length} results\n`);
+
+// Display results
+for (const [i, result] of results.results.slice(0, 3).entries()) {
+  const payload = result.payload;
+  console.log(`Result ${i + 1}:`);
+  console.log(`  Source: ${payload.source_name}`);
+  console.log(`  Content: ${payload.md_content.slice(0, 100)}...`);
+  console.log(`  Score: ${result.score.toFixed(3)}\n`);
+}
+```
+
+</CodeGroup>
+
+<Tip>
+  If you get an error about no results, the initial sync might still be running. Wait a minute and try again, or check the sync status in the dashboard.
+</Tip>
+
+## Step 5: Try advanced search
+
+Airweave supports powerful search features including filters, AI reranking, and query expansion:
+
+<CodeGroup>
+
+```python Python
+from airweave import SearchRequest, Filter, FieldCondition, MatchAny
+
+# Advanced search with filters and AI features
+results = client.collections.search_advanced(
+    readable_id=collection.readable_id,
+    search_request=SearchRequest(
+        query="customer feedback about pricing",
+        filter=Filter(
+            must=[
+                FieldCondition(
+                    key="source_name",
+                    match=MatchAny(any=["Stripe", "Zendesk", "Slack"])
+                )
+            ]
+        ),
+        recency_bias=0.5,        # Prefer newer content
+        score_threshold=0.7,     # High-quality results only
+        enable_reranking=True,   # AI reranking for better relevance
+        limit=10
+    )
+)
+
+print(f"Found {len(results.results)} high-quality results")
+```
+
+```typescript TypeScript
+import { SearchRequest, Filter, FieldCondition, MatchAny } from '@airweave/sdk';
+
+// Advanced search with filters and AI features
+const results = await client.collections.searchAdvanced({
+  readableId: collection.readableId,
+  searchRequest: {
+    query: 'customer feedback about pricing',
+    filter: {
+      must: [
+        {
+          key: 'source_name',
+          match: { any: ['Stripe', 'Zendesk', 'Slack'] }
+        }
+      ]
+    },
+    recencyBias: 0.5,        // Prefer newer content
+    scoreThreshold: 0.7,     // High-quality results only
+    enableReranking: true,   // AI reranking for better relevance
+    limit: 10
+  }
+});
+
+console.log(`Found ${results.results.length} high-quality results`);
+```
+
+</CodeGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card
+    title="Explore core concepts"
+    icon="book"
+    href="/concepts"
+  >
+    Learn about sources, connectors, collections, entities, and syncs
+  </Card>
+  <Card
+    title="Add more connectors"
+    icon="plug"
+    href="/connectors/overview"
+  >
+    Connect GitHub, Notion, Slack, databases, and 50+ other sources
+  </Card>
+  <Card
+    title="Master search features"
+    icon="magnifying-glass"
+    href="/search"
+  >
+    Filters, reranking, query expansion, and answer generation
+  </Card>
+  <Card
+    title="Build AI agents"
+    icon="robot"
+    href="/integrations/mcp"
+  >
+    Integrate with Claude, OpenAI, and other AI frameworks
+  </Card>
+</CardGroup>
+
+## Need help?
+
+<CardGroup cols={2}>
+  <Card
+    title="Join our Discord"
+    icon="discord"
+    href="https://discord.gg/gDuebsWGkn"
+  >
+    Get help from the community and team
+  </Card>
+  <Card
+    title="Browse examples"
+    icon="code"
+    href="https://github.com/airweave-ai/airweave/tree/main/examples"
+  >
+    Example notebooks and tutorials
+  </Card>
+</CardGroup>

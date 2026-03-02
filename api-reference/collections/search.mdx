@@ -1,0 +1,200 @@
+---
+title: 'Search Collection'
+api: 'POST /v1/collections/{readable_id}/search'
+description: 'Search your collection using semantic and hybrid search'
+---
+
+## Overview
+
+Search your collection using AI-powered semantic search. This endpoint provides powerful search capabilities:
+
+**Search Strategies:**
+- **hybrid** (default): Combines neural (semantic) and keyword (BM25) matching
+- **neural**: Pure semantic search using embeddings
+- **keyword**: Traditional keyword-based BM25 search
+
+**Features:**
+- **Query expansion**: Generate query variations to improve recall
+- **Filter interpretation**: Extract structured filters from natural language
+- **Reranking**: LLM-based reranking for improved relevance
+- **Answer generation**: AI-generated answers based on search results
+
+## Path Parameters
+
+<ParamField path="readable_id" type="string" required>
+  The unique readable identifier of the collection to search
+</ParamField>
+
+## Request Body
+
+<ParamField body="query" type="string" required>
+  The search query text (max 2048 tokens)
+  
+  Example: "How do I reset my password?"
+</ParamField>
+
+<ParamField body="retrieval_strategy" type="string" default="hybrid">
+  Search strategy: `hybrid`, `neural`, or `keyword`
+</ParamField>
+
+<ParamField body="filter" type="object">
+  Structured filter for metadata-based filtering (Qdrant filter format)
+  
+  <Expandable title="example">
+    ```json
+    {
+      "must": [
+        {"key": "source_name", "match": {"value": "GitHub"}}
+      ]
+    }
+    ```
+  </Expandable>
+</ParamField>
+
+<ParamField body="offset" type="integer" default={0}>
+  Number of results to skip for pagination
+</ParamField>
+
+<ParamField body="limit" type="integer" default={10}>
+  Maximum number of results to return (1-1000)
+</ParamField>
+
+<ParamField body="expand_query" type="boolean" default={true}>
+  Generate query variations to improve recall
+</ParamField>
+
+<ParamField body="interpret_filters" type="boolean" default={false}>
+  Extract structured filters from natural language (e.g., 'from last week')
+</ParamField>
+
+<ParamField body="rerank" type="boolean" default={true}>
+  Apply LLM-based reranking for improved relevance
+</ParamField>
+
+<ParamField body="generate_answer" type="boolean" default={true}>
+  Generate an AI answer based on search results
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array" required>
+  Array of search result objects
+  
+  <Expandable title="result properties">
+    <ResponseField name="entity_id" type="string">
+      Unique identifier of the matched entity
+    </ResponseField>
+    
+    <ResponseField name="source_name" type="string">
+      Source that this result came from (e.g., "GitHub", "Slack")
+    </ResponseField>
+    
+    <ResponseField name="md_content" type="string">
+      Markdown content of the result
+    </ResponseField>
+    
+    <ResponseField name="metadata" type="object">
+      Source-specific metadata
+    </ResponseField>
+    
+    <ResponseField name="score" type="number">
+      Relevance score (0-1)
+    </ResponseField>
+    
+    <ResponseField name="breadcrumbs" type="array">
+      Hierarchical path to the result
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      Direct link to the original source
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="completion" type="string">
+  AI-generated answer based on search results (only if `generate_answer: true`)
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/collections/customer-support-tickets-x7k9m/search \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How do I reset my password?",
+    "limit": 10
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/collections/customer-support-tickets-x7k9m/search"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "query": "How do I reset my password?",
+    "limit": 10
+}
+
+response = requests.post(url, headers=headers, json=data)
+results = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/collections/customer-support-tickets-x7k9m/search';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  query: 'How do I reset my password?',
+  limit: 10
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+const results = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "results": [
+    {
+      "entity_id": "abc123-def456-789012",
+      "source_name": "GitHub",
+      "md_content": "# Password Reset Guide\n\nTo reset your password...",
+      "metadata": {
+        "file_path": "docs/auth/password-reset.md",
+        "last_modified": "2024-03-15T09:30:00Z"
+      },
+      "score": 0.92,
+      "breadcrumbs": ["docs", "auth", "password-reset.md"],
+      "url": "https://github.com/company/docs/blob/main/docs/auth/password-reset.md"
+    }
+  ],
+  "completion": "To reset your password, navigate to the login page and click 'Forgot Password'. You'll receive an email with a reset link that expires in 24 hours."
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Collection with the specified readable_id does not exist
+</ResponseField>
+
+<ResponseField name="422 Validation Error">
+  Invalid query (e.g., exceeds token limit)
+</ResponseField>

@@ -1,0 +1,68 @@
+---
+title: Todoist
+description: Connect Todoist to Airweave to sync tasks and projects
+---
+
+Connect Todoist to Airweave to make your personal task management data searchable by AI agents.
+
+## What Gets Synced
+
+The Todoist connector syncs:
+
+- **Projects** - Project containers and metadata
+- **Sections** - Project sections
+- **Tasks** - Tasks with full details
+- **Comments** - Task comments
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Add Todoist Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Todoist**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Todoist workspace.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Todoist data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Todoist Tasks
+
+Tasks with full context and metadata.
+
+**Key fields:**
+- Task content and description
+- Priority (1-4)
+- Due date and recurrence
+- Labels and project
+- Assignee information
+
+### Todoist Projects
+
+Project organization containers.
+
+**Key fields:**
+- Project name and color
+- View style (list or board)
+- Sharing status
+- Parent project (if nested)
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/todoist.py"
+>
+  Explore the Todoist connector implementation on GitHub
+</Card>

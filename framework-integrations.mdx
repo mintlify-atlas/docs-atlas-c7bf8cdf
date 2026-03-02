@@ -1,0 +1,378 @@
+---
+title: Framework Integrations
+subtitle: Native integrations with popular AI frameworks and agent builders
+---
+
+Airweave provides native integrations with popular AI frameworks and agent builders, making it easy to add semantic search and context retrieval to your existing applications.
+
+## Available Integrations
+
+<CardGroup cols={2}>
+  <Card title="LlamaIndex" icon="python" href="/framework-integrations/llamaindex">
+    Python tool for LlamaIndex agents
+  </Card>
+  <Card title="Vercel AI SDK" icon="js" href="/framework-integrations/vercel-ai-sdk">
+    TypeScript integration for Vercel AI SDK
+  </Card>
+  <Card title="Pipedream" icon="webhook" href="/framework-integrations/pipedream">
+    No-code workflows and agent builder
+  </Card>
+  <Card title="Google Antigravity" icon="google" href="/framework-integrations/google-antigravity">
+    Google's agent framework integration
+  </Card>
+</CardGroup>
+
+## Quick Comparison
+
+| Framework | Language | Use Case | Installation |
+|-----------|----------|----------|-------------|
+| **LlamaIndex** | Python | AI agents with tool calling | `pip install llama-index-tools-airweave` |
+| **Vercel AI SDK** | TypeScript | AI applications with streaming | `npm install @airweave/vercel-ai-sdk` |
+| **Pipedream** | No-code/JavaScript | Workflows and automations | Connect via Pipedream UI |
+| **Google Antigravity** | Python | Google's agent framework | Built-in integration |
+
+## LlamaIndex
+
+The `llama-index-tools-airweave` package provides an `AirweaveToolSpec` for LlamaIndex agents.
+
+### Installation
+
+```bash
+pip install llama-index llama-index-tools-airweave
+```
+
+### Quick Start
+
+```python
+import os
+import asyncio
+from llama_index.tools.airweave import AirweaveToolSpec
+from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.llms.openai import OpenAI
+
+# Initialize the Airweave tool
+airweave_tool = AirweaveToolSpec(
+    api_key=os.environ["AIRWEAVE_API_KEY"],
+)
+
+# Create an agent with the Airweave tools
+agent = FunctionAgent(
+    tools=airweave_tool.to_tool_list(),
+    llm=OpenAI(model="gpt-4o-mini"),
+    system_prompt="""You are a helpful assistant that can search through
+    Airweave collections to answer questions about your organization's data.""",
+)
+
+# Use the agent
+async def main():
+    response = await agent.run(
+        "Search the finance-data collection for Q4 revenue reports"
+    )
+    print(response)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Available Tools
+
+- **`search_collection`**: Simple search with default settings
+- **`advanced_search_collection`**: Full control over retrieval parameters
+- **`search_and_generate_answer`**: RAG-style direct answers
+- **`list_collections`**: List all available collections
+- **`get_collection_info`**: Get collection details
+
+[View full LlamaIndex documentation →](/framework-integrations/llamaindex)
+
+## Vercel AI SDK
+
+The `@airweave/vercel-ai-sdk` package provides an `airweaveSearch` tool for the Vercel AI SDK.
+
+### Installation
+
+```bash
+npm install ai @ai-sdk/openai @airweave/vercel-ai-sdk
+```
+
+### Quick Start
+
+```typescript
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { airweaveSearch } from '@airweave/vercel-ai-sdk';
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'What were the key decisions from last week?',
+  tools: {
+    search: airweaveSearch({
+      defaultCollection: 'my-knowledge-base',
+    }),
+  },
+  maxSteps: 3,
+});
+
+console.log(text);
+```
+
+### Configuration Options
+
+```typescript
+airweaveSearch({
+  apiKey: 'your-api-key',              // Defaults to AIRWEAVE_API_KEY env
+  defaultCollection: 'my-collection',  // Default collection to search
+  defaultLimit: 20,                    // Max results per search (default: 10)
+  generateAnswer: true,                // Generate AI answer (default: false)
+  expandQuery: true,                   // Query expansion (default: true)
+  rerank: true,                        // Rerank results (default: true)
+  baseUrl: 'https://custom.url',       // For self-hosted instances
+});
+```
+
+[View full Vercel AI SDK documentation →](/framework-integrations/vercel-ai-sdk)
+
+## Pipedream
+
+Pipedream is a low-code platform for building workflows and agents. The Airweave integration provides actions for searching collections, managing data, and triggering syncs.
+
+### Setup
+
+<Steps>
+  <Step title="Create Workflow">
+    Open [Pipedream](https://pipedream.com) and create a new workflow
+  </Step>
+  
+  <Step title="Add Airweave Action">
+    Add an Airweave action step to your workflow
+  </Step>
+  
+  <Step title="Connect Account">
+    Click **Connect Account** and enter your Airweave API key
+  </Step>
+  
+  <Step title="Configure Action">
+    Select an action (Search Collection, List Collections, etc.)
+  </Step>
+</Steps>
+
+### Available Actions
+
+- **Search Collection**: Semantic and keyword search
+- **List Collections**: Get all collections
+- **Get Collection**: Collection details
+- **Create Collection**: Create new collection
+- **Delete Collection**: Remove collection
+- **List Sources**: Available data connectors
+- **Trigger Source Connection Sync**: Manual data sync
+
+### Example: Slack Q&A Bot
+
+1. **Trigger**: Slack - New Slash Command
+2. **Action**: Airweave - Search Collection (with `responseType: "completion"`)
+3. **Action**: Slack - Reply to Command
+
+[View full Pipedream documentation →](/framework-integrations/pipedream)
+
+## Google Antigravity
+
+Google Antigravity is Google's agent framework. Airweave provides native integration for semantic search capabilities.
+
+### Setup
+
+Airweave is available as a built-in integration in Google Antigravity. Configure it with your API key and collection ID.
+
+```python
+from google.antigravity import Agent
+from google.antigravity.integrations import AirweaveIntegration
+
+# Initialize Airweave integration
+airweave = AirweaveIntegration(
+    api_key="your-api-key",
+    collection_id="your-collection-id"
+)
+
+# Create agent with Airweave
+agent = Agent(
+    integrations=[airweave],
+    instructions="You can search our knowledge base to answer questions."
+)
+
+# Use the agent
+response = agent.run("What is our refund policy?")
+print(response)
+```
+
+[View full Google Antigravity documentation →](/framework-integrations/google-antigravity)
+
+## Other Integrations
+
+### LangChain
+
+Use Airweave with LangChain via the REST API or SDKs:
+
+```python
+from langchain.tools import Tool
+from airweave import AirweaveSDK
+
+client = AirweaveSDK(api_key="your-key")
+
+def airweave_search(query: str) -> str:
+    results = client.collections.search(
+        readable_id="my-collection",
+        query=query,
+        response_type="completion"
+    )
+    return results.completion
+
+tool = Tool(
+    name="AirweaveSearch",
+    func=airweave_search,
+    description="Search the knowledge base for relevant information"
+)
+```
+
+### CrewAI
+
+Integrate Airweave with CrewAI agents:
+
+```python
+from crewai import Agent, Task, Crew
+from airweave import AirweaveSDK
+
+client = AirweaveSDK(api_key="your-key")
+
+def search_knowledge_base(query: str) -> str:
+    results = client.collections.search(
+        readable_id="company-docs",
+        query=query
+    )
+    return "\n".join([r["payload"]["md_content"] for r in results.results[:3]])
+
+researcher = Agent(
+    role="Knowledge Base Researcher",
+    goal="Find relevant information from the knowledge base",
+    tools=[search_knowledge_base]
+)
+```
+
+### Custom Integration
+
+For frameworks not listed above, use the [Python SDK](/sdks) or [TypeScript SDK](/sdks) to build custom integrations:
+
+<CodeGroup>
+```python Python
+from airweave import AirweaveSDK
+
+client = AirweaveSDK(api_key="your-key")
+
+# Your custom integration logic
+results = client.collections.search(
+    readable_id="my-collection",
+    query="user query"
+)
+```
+
+```typescript TypeScript
+import { AirweaveSDKClient } from '@airweave/sdk';
+
+const client = new AirweaveSDKClient({
+  apiKey: 'your-key',
+});
+
+// Your custom integration logic
+const results = await client.collections.search('my-collection', {
+  query: 'user query',
+});
+```
+</CodeGroup>
+
+## Common Patterns
+
+### RAG (Retrieval-Augmented Generation)
+
+All integrations support RAG patterns by setting `response_type="completion"` or `generateAnswer: true`:
+
+<CodeGroup>
+```python LlamaIndex
+result = airweave_tool.search_and_generate_answer(
+    collection_id="docs",
+    query="What is our refund policy?",
+    use_reranking=True
+)
+print(result)  # Direct answer
+```
+
+```typescript Vercel AI SDK
+const search = airweaveSearch({
+  defaultCollection: 'docs',
+  generateAnswer: true,  // Enable RAG
+});
+```
+
+```python Direct SDK
+results = client.collections.search(
+    readable_id="docs",
+    query="What is our refund policy?",
+    response_type="completion"
+)
+print(results.completion)  # AI-generated answer
+```
+</CodeGroup>
+
+### Advanced Search Parameters
+
+All integrations support advanced search parameters:
+
+- **Recency Bias**: Weight recent content higher
+- **Score Threshold**: Filter low-relevance results
+- **Search Method**: Choose hybrid, neural, or keyword search
+- **Reranking**: LLM-based result reranking
+- **Query Expansion**: Automatic query variations
+
+<CodeGroup>
+```python LlamaIndex
+result = airweave_tool.advanced_search_collection(
+    collection_id="news",
+    query="AI breakthroughs",
+    temporal_relevance=0.8,  # Favor recent content
+    retrieval_strategy="hybrid",
+    rerank=True
+)
+```
+
+```typescript Vercel AI SDK
+const search = airweaveSearch({
+  defaultCollection: 'news',
+  // These apply to all searches
+  rerank: true,
+  expandQuery: true,
+});
+```
+
+```python Direct SDK
+results = client.collections.search(
+    readable_id="news",
+    query="AI breakthroughs",
+    recency_bias=0.8,
+    search_method="hybrid",
+    enable_reranking=True
+)
+```
+</CodeGroup>
+
+## Need Help?
+
+<CardGroup cols={2}>
+  <Card title="SDK Documentation" icon="code" href="/sdks">
+    View Python and TypeScript SDK docs
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Complete API documentation
+  </Card>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/484HY9Ehxt">
+    Get help from the community
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/airweave-ai/airweave">
+    View source code and examples
+  </Card>
+</CardGroup>

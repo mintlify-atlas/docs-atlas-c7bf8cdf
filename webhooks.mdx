@@ -1,0 +1,746 @@
+---
+title: Webhooks
+description: Real-time notifications for sync and lifecycle events
+---
+
+Webhooks allow you to receive real-time notifications when events occur in Airweave. Instead of polling the API, register an endpoint and Airweave will push updates to you the moment they happen.
+
+<Warning>
+**Beta Feature**
+
+The Webhooks API is currently in beta. The API is stable but may receive enhancements based on feedback.
+</Warning>
+
+## Overview
+
+Webhooks are HTTP POST requests sent to your server when specific events occur:
+
+- Sync jobs completing or failing
+- Source connections being created, authenticated, or deleted
+- Collections being created, updated, or deleted
+
+This enables reactive integrations: trigger workflows, update dashboards, send alerts, or sync state with external systems automatically.
+
+```
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   Airweave  │ ──── │    Svix     │ ──── │ Your Server │
+│  (Events)   │      │  (Delivery) │      │  (Webhook)  │
+└─────────────┘      └─────────────┘      └─────────────┘
+```
+
+Airweave uses [Svix](https://www.svix.com/) for webhook delivery, which provides:
+- Automatic retries with exponential backoff
+- Cryptographic signature verification
+- Delivery guarantees and observability
+
+## Available Event Types
+
+### Sync Events
+
+| Event | Description | When it fires |
+|-------|-------------|---------------|
+| `sync.pending` | Sync job queued | Job created and waiting to start |
+| `sync.running` | Sync job started | Job begins processing |
+| `sync.completed` | Sync finished successfully | All data synced without errors |
+| `sync.failed` | Sync job failed | Job encountered an error |
+| `sync.cancelled` | Sync job cancelled | Job was manually cancelled |
+
+### Source Connection Events
+
+| Event | Description | When it fires |
+|-------|-------------|---------------|
+| `source_connection.created` | Connection created | New source connection added |
+| `source_connection.auth_completed` | OAuth completed | Connection authenticated |
+| `source_connection.deleted` | Connection removed | Connection and data deleted |
+
+### Collection Events
+
+| Event | Description | When it fires |
+|-------|-------------|---------------|
+| `collection.created` | Collection created | New collection set up |
+| `collection.updated` | Collection modified | Name or config changed |
+| `collection.deleted` | Collection removed | Collection and data deleted |
+
+<Tip>
+Most integrations only need `sync.completed` and `sync.failed`. Subscribe to other events if you need to track infrastructure changes or audit activities.
+</Tip>
+
+## Creating a Subscription
+
+Create a webhook subscription to start receiving events.
+
+<Steps>
+  <Step title="Prepare your endpoint">
+    Set up an HTTPS endpoint that accepts POST requests and returns a `200` status code. Use ngrok or similar tools for local development.
+  </Step>
+  
+  <Step title="Create subscription">
+    Use the API to register your endpoint and choose which events to receive.
+  </Step>
+  
+  <Step title="Verify signatures">
+    Validate webhook signatures to ensure requests are from Airweave.
+  </Step>
+</Steps>
+
+<CodeGroup>
+```python Python
+from airweave import AirweaveSDK
+
+client = AirweaveSDK(api_key="YOUR_API_KEY")
+
+# Create webhook subscription
+subscription = client.webhooks.create_subscription(
+    url="https://api.mycompany.com/webhooks/airweave",
+    event_types=["sync.completed", "sync.failed"]
+)
+
+print(f"Subscription ID: {subscription.id}")
+print(f"URL: {subscription.url}")
+print(f"Events: {subscription.filter_types}")
+
+# Save the signing secret for signature verification
+detail = client.webhooks.get_subscription(
+    subscription_id=subscription.id,
+    include_secret=True
+)
+signing_secret = detail.secret
+print(f"Secret: {signing_secret}")
+# Store this securely! You'll need it to verify signatures.
+```
+
+```typescript TypeScript
+import { AirweaveSDKClient } from "@airweave/sdk";
+
+const client = new AirweaveSDKClient({ 
+  apiKey: "YOUR_API_KEY" 
+});
+
+// Create webhook subscription
+const subscription = await client.webhooks.createSubscription({
+  url: "https://api.mycompany.com/webhooks/airweave",
+  eventTypes: ["sync.completed", "sync.failed"]
+});
+
+console.log(`Subscription ID: ${subscription.id}`);
+console.log(`URL: ${subscription.url}`);
+console.log(`Events: ${subscription.filterTypes}`);
+
+// Get signing secret
+const detail = await client.webhooks.getSubscription(
+  subscription.id,
+  { includeSecret: true }
+);
+const signingSecret = detail.secret;
+console.log(`Secret: ${signingSecret}`);
+// Store this securely!
+```
+
+```bash cURL
+# Create subscription
+curl -X POST "https://api.airweave.ai/v1/webhooks/subscriptions" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://api.mycompany.com/webhooks/airweave",
+    "event_types": ["sync.completed", "sync.failed"]
+  }'
+
+# Get signing secret
+curl -X GET "https://api.airweave.ai/v1/webhooks/subscriptions/{subscription_id}?include_secret=true" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="url" type="string" required>
+  HTTPS URL where webhook events will be delivered. Must be publicly accessible and return a 2xx status code.
+  
+  Example: `"https://api.mycompany.com/webhooks/airweave"`
+</ParamField>
+
+<ParamField body="event_types" type="array" required>
+  List of event types to subscribe to. Events not in this list won't be delivered.
+  
+  Available: `sync.pending`, `sync.running`, `sync.completed`, `sync.failed`, `sync.cancelled`, `source_connection.created`, `source_connection.auth_completed`, `source_connection.deleted`, `collection.created`, `collection.updated`, `collection.deleted`
+  
+  Example: `["sync.completed", "sync.failed"]`
+</ParamField>
+
+<ParamField body="secret" type="string">
+  Optional custom signing secret (min 24 characters). If not provided, a secure secret will be auto-generated.
+  
+  Example: `"whsec_C2FVsBQIhrscChlQIMV10R9X4jZ8"`
+</ParamField>
+
+## Webhook Payloads
+
+### sync.completed
+
+Fired when a sync job finishes successfully:
+
+```json
+{
+  "event_type": "sync.completed",
+  "sync_id": "440e8400-e29b-41d4-a716-446655440099",
+  "sync_job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "collection_id": "770e8400-e29b-41d4-a716-446655440002",
+  "collection_readable_id": "sales-data-ab123",
+  "collection_name": "Sales Data",
+  "source_connection_id": "660e8400-e29b-41d4-a716-446655440001",
+  "source_type": "salesforce",
+  "entities_inserted": 42,
+  "entities_updated": 10,
+  "entities_deleted": 3,
+  "entities_skipped": 120,
+  "chunks_written": 215,
+  "timestamp": "2025-01-15T14:30:00Z"
+}
+```
+
+<Accordion title="Field Descriptions">
+  <ParamField path="event_type" type="string">
+    Always `"sync.completed"`
+  </ParamField>
+  
+  <ParamField path="sync_job_id" type="UUID">
+    Unique identifier for this specific sync job run
+  </ParamField>
+  
+  <ParamField path="collection_readable_id" type="string">
+    Human-readable collection ID (e.g., `"sales-data-ab123"`)
+  </ParamField>
+  
+  <ParamField path="source_type" type="string">
+    Source connector type (e.g., `"salesforce"`, `"github"`, `"notion"`)
+  </ParamField>
+  
+  <ParamField path="entities_inserted" type="integer">
+    Number of new entities added
+  </ParamField>
+  
+  <ParamField path="entities_updated" type="integer">
+    Number of existing entities updated
+  </ParamField>
+  
+  <ParamField path="entities_deleted" type="integer">
+    Number of entities removed
+  </ParamField>
+  
+  <ParamField path="chunks_written" type="integer">
+    Number of chunks written to vector database
+  </ParamField>
+</Accordion>
+
+### sync.failed
+
+Fired when a sync job encounters an error:
+
+```json
+{
+  "event_type": "sync.failed",
+  "sync_id": "440e8400-e29b-41d4-a716-446655440099",
+  "sync_job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "collection_id": "770e8400-e29b-41d4-a716-446655440002",
+  "collection_readable_id": "sales-data-ab123",
+  "collection_name": "Sales Data",
+  "source_connection_id": "660e8400-e29b-41d4-a716-446655440001",
+  "source_type": "salesforce",
+  "error": "Authentication token expired",
+  "timestamp": "2025-01-15T14:02:30Z"
+}
+```
+
+### source_connection.created
+
+Fired when a new source connection is added:
+
+```json
+{
+  "event_type": "source_connection.created",
+  "source_connection_id": "660e8400-e29b-41d4-a716-446655440001",
+  "collection_readable_id": "finance-data-ab123",
+  "source_type": "notion",
+  "is_authenticated": false,
+  "timestamp": "2025-01-15T13:55:00Z"
+}
+```
+
+### collection.created
+
+Fired when a new collection is created:
+
+```json
+{
+  "event_type": "collection.created",
+  "collection_id": "770e8400-e29b-41d4-a716-446655440002",
+  "collection_readable_id": "customer-support-x7k9m",
+  "collection_name": "Customer Support",
+  "timestamp": "2025-01-15T10:00:00Z"
+}
+```
+
+## Verifying Signatures
+
+Every webhook delivery includes signature headers for verification. Always verify signatures to ensure requests are from Airweave.
+
+### Request Headers
+
+```http
+POST /webhooks/airweave HTTP/1.1
+Host: your-server.com
+Content-Type: application/json
+svix-id: msg_2xKvB8LPqM4nRst
+svix-timestamp: 1705329000
+svix-signature: v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=
+```
+
+<ParamField header="svix-id" type="string">
+  Unique message identifier
+</ParamField>
+
+<ParamField header="svix-timestamp" type="integer">
+  Unix timestamp when the message was sent
+</ParamField>
+
+<ParamField header="svix-signature" type="string">
+  Space-separated list of signatures (format: `v1,<base64-signature>`)
+</ParamField>
+
+### Verification Example
+
+<CodeGroup>
+```python Python
+import hmac
+import hashlib
+import base64
+from fastapi import FastAPI, Request, HTTPException
+
+app = FastAPI()
+
+SIGNING_SECRET = "whsec_C2FVsBQIhrscChlQIMV10R9X4jZ8"  # From subscription
+
+def verify_signature(payload: bytes, headers: dict) -> bool:
+    """Verify Svix webhook signature."""
+    msg_id = headers.get("svix-id")
+    timestamp = headers.get("svix-timestamp")
+    signatures = headers.get("svix-signature", "")
+    
+    if not msg_id or not timestamp or not signatures:
+        return False
+    
+    # Decode the secret (remove 'whsec_' prefix)
+    secret = SIGNING_SECRET
+    if secret.startswith("whsec_"):
+        secret = secret[6:]
+    secret_bytes = base64.b64decode(secret)
+    
+    # Construct signed content
+    signed_content = f"{msg_id}.{timestamp}.{payload.decode('utf-8')}"
+    
+    # Compute expected signature
+    expected = hmac.new(
+        secret_bytes,
+        signed_content.encode('utf-8'),
+        hashlib.sha256
+    ).digest()
+    expected_b64 = base64.b64encode(expected).decode('utf-8')
+    
+    # Compare with provided signatures
+    for sig in signatures.split(" "):
+        parts = sig.split(",", 1)
+        if len(parts) == 2 and parts[0] == "v1":
+            if hmac.compare_digest(expected_b64, parts[1]):
+                return True
+    
+    return False
+
+@app.post("/webhooks/airweave")
+async def receive_webhook(request: Request):
+    payload = await request.body()
+    headers = dict(request.headers)
+    
+    # Verify signature
+    if not verify_signature(payload, headers):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    
+    # Parse event
+    event = await request.json()
+    event_type = event.get("event_type")
+    
+    if event_type == "sync.completed":
+        print(f"Sync completed: {event['collection_name']}")
+        print(f"  Inserted: {event['entities_inserted']}")
+        print(f"  Updated: {event['entities_updated']}")
+        # Trigger your workflow here
+        
+    elif event_type == "sync.failed":
+        print(f"Sync failed: {event['collection_name']}")
+        print(f"  Error: {event['error']}")
+        # Send alert
+    
+    return {"status": "ok"}
+```
+
+```typescript TypeScript
+import { Webhook } from "svix";
+import express from "express";
+
+const app = express();
+app.use(express.raw({ type: "application/json" }));
+
+const SIGNING_SECRET = "whsec_C2FVsBQIhrscChlQIMV10R9X4jZ8";
+
+app.post("/webhooks/airweave", (req, res) => {
+  const payload = req.body.toString();
+  const headers = {
+    "svix-id": req.headers["svix-id"] as string,
+    "svix-timestamp": req.headers["svix-timestamp"] as string,
+    "svix-signature": req.headers["svix-signature"] as string,
+  };
+  
+  // Verify signature using Svix library
+  const wh = new Webhook(SIGNING_SECRET);
+  let event;
+  
+  try {
+    event = wh.verify(payload, headers);
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+  
+  // Process event
+  const eventType = event.event_type;
+  
+  if (eventType === "sync.completed") {
+    console.log(`Sync completed: ${event.collection_name}`);
+    console.log(`  Inserted: ${event.entities_inserted}`);
+    // Trigger your workflow
+  } else if (eventType === "sync.failed") {
+    console.log(`Sync failed: ${event.collection_name}`);
+    console.log(`  Error: ${event.error}`);
+    // Send alert
+  }
+  
+  res.json({ status: "ok" });
+});
+
+app.listen(3000);
+```
+
+```bash Install Svix SDK
+# Python
+pip install svix
+
+# Node.js
+npm install svix
+```
+</CodeGroup>
+
+<Warning>
+**Always verify signatures** before processing webhook payloads. This prevents attackers from sending forged requests to your endpoint.
+</Warning>
+
+## Managing Subscriptions
+
+### List Subscriptions
+
+<CodeGroup>
+```python Python
+subscriptions = client.webhooks.list_subscriptions()
+
+for sub in subscriptions:
+    print(f"ID: {sub.id}")
+    print(f"URL: {sub.url}")
+    print(f"Events: {sub.filter_types}")
+    print(f"Status: {'Disabled' if sub.disabled else 'Active'}")
+    print(f"Health: {sub.health_status}")
+    print()
+```
+
+```typescript TypeScript
+const subscriptions = await client.webhooks.listSubscriptions();
+
+for (const sub of subscriptions) {
+  console.log(`ID: ${sub.id}`);
+  console.log(`URL: ${sub.url}`);
+  console.log(`Events: ${sub.filterTypes}`);
+  console.log(`Status: ${sub.disabled ? 'Disabled' : 'Active'}`);
+  console.log(`Health: ${sub.healthStatus}`);
+  console.log();
+}
+```
+
+```bash cURL
+curl -X GET "https://api.airweave.ai/v1/webhooks/subscriptions" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+</CodeGroup>
+
+### Update Subscription
+
+<CodeGroup>
+```python Python
+# Change URL
+updated = client.webhooks.update_subscription(
+    subscription_id="c3d4e5f6-a7b8-9012-cdef-345678901234",
+    url="https://api.mycompany.com/webhooks/airweave-v2"
+)
+
+# Change event types
+updated = client.webhooks.update_subscription(
+    subscription_id="c3d4e5f6-a7b8-9012-cdef-345678901234",
+    event_types=["sync.completed", "sync.failed", "sync.running"]
+)
+
+# Disable subscription
+updated = client.webhooks.update_subscription(
+    subscription_id="c3d4e5f6-a7b8-9012-cdef-345678901234",
+    disabled=True
+)
+
+# Re-enable and recover missed messages
+from datetime import datetime, timezone, timedelta
+
+updated = client.webhooks.update_subscription(
+    subscription_id="c3d4e5f6-a7b8-9012-cdef-345678901234",
+    disabled=False,
+    recover_since=(datetime.now(timezone.utc) - timedelta(days=7))
+)
+```
+
+```typescript TypeScript
+// Change URL
+const updated = await client.webhooks.updateSubscription(
+  "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  {
+    url: "https://api.mycompany.com/webhooks/airweave-v2"
+  }
+);
+
+// Disable subscription
+const updated2 = await client.webhooks.updateSubscription(
+  "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  {
+    disabled: true
+  }
+);
+
+// Re-enable with recovery
+const sevenDaysAgo = new Date();
+sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+const updated3 = await client.webhooks.updateSubscription(
+  "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  {
+    disabled: false,
+    recoverSince: sevenDaysAgo
+  }
+);
+```
+</CodeGroup>
+
+### Delete Subscription
+
+<CodeGroup>
+```python Python
+deleted = client.webhooks.delete_subscription(
+    subscription_id="c3d4e5f6-a7b8-9012-cdef-345678901234"
+)
+
+print(f"Deleted: {deleted.url}")
+```
+
+```typescript TypeScript
+const deleted = await client.webhooks.deleteSubscription(
+  "c3d4e5f6-a7b8-9012-cdef-345678901234"
+);
+
+console.log(`Deleted: ${deleted.url}`);
+```
+
+```bash cURL
+curl -X DELETE "https://api.airweave.ai/v1/webhooks/subscriptions/c3d4e5f6-a7b8-9012-cdef-345678901234" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+</CodeGroup>
+
+<Warning>
+Once deleted, Airweave will stop sending events to this endpoint immediately. Any pending deliveries will be cancelled.
+</Warning>
+
+## Recovering Failed Messages
+
+If your endpoint was temporarily down, you can replay failed messages.
+
+<CodeGroup>
+```python Python
+from datetime import datetime, timezone, timedelta
+
+# Recover last 24 hours
+recovery = client.webhooks.recover_messages(
+    subscription_id="c3d4e5f6-a7b8-9012-cdef-345678901234",
+    since=datetime.now(timezone.utc) - timedelta(days=1),
+    until=datetime.now(timezone.utc)
+)
+
+print(f"Recovery task ID: {recovery.id}")
+print(f"Status: {recovery.status}")  # "running" or "completed"
+```
+
+```typescript TypeScript
+const oneDayAgo = new Date();
+oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+const recovery = await client.webhooks.recoverMessages(
+  "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  {
+    since: oneDayAgo,
+    until: new Date()
+  }
+);
+
+console.log(`Recovery task ID: ${recovery.id}`);
+console.log(`Status: ${recovery.status}`);
+```
+
+```bash cURL
+curl -X POST "https://api.airweave.ai/v1/webhooks/subscriptions/c3d4e5f6-a7b8-9012-cdef-345678901234/recover" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "since": "2024-03-14T00:00:00Z",
+    "until": "2024-03-15T00:00:00Z"
+  }'
+```
+</CodeGroup>
+
+## Viewing Messages and Attempts
+
+Inspect webhook messages and delivery attempts for debugging.
+
+<CodeGroup>
+```python Python
+# List all messages
+messages = client.webhooks.list_messages(
+    event_types=["sync.completed", "sync.failed"]
+)
+
+for msg in messages[:5]:
+    print(f"Event: {msg.event_type}")
+    print(f"Timestamp: {msg.timestamp}")
+    print(f"Payload: {msg.payload}")
+    print()
+
+# Get specific message with delivery attempts
+message = client.webhooks.get_message(
+    message_id="a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    include_attempts=True
+)
+
+print(f"Event: {message.event_type}")
+if message.delivery_attempts:
+    for attempt in message.delivery_attempts:
+        print(f"  Attempt {attempt.id}:")
+        print(f"    Status: {attempt.status}")
+        print(f"    Response Code: {attempt.response_status_code}")
+        print(f"    Response: {attempt.response}")
+```
+
+```typescript TypeScript
+// List messages
+const messages = await client.webhooks.listMessages({
+  eventTypes: ["sync.completed", "sync.failed"]
+});
+
+for (const msg of messages.slice(0, 5)) {
+  console.log(`Event: ${msg.eventType}`);
+  console.log(`Timestamp: ${msg.timestamp}`);
+  console.log(`Payload:`, msg.payload);
+  console.log();
+}
+
+// Get message with attempts
+const message = await client.webhooks.getMessage(
+  "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  { includeAttempts: true }
+);
+```
+</CodeGroup>
+
+## Health Status
+
+Subscriptions have health statuses based on recent delivery attempts:
+
+<Accordion title="healthy">
+  All recent deliveries succeeded (2xx responses). Your endpoint is working correctly.
+</Accordion>
+
+<Accordion title="degraded">
+  Mix of successes and failures in recent deliveries. Check your endpoint logs for intermittent issues.
+</Accordion>
+
+<Accordion title="failing">
+  Multiple consecutive failures beyond threshold (3+). Action required - your endpoint is down or returning errors.
+</Accordion>
+
+<Accordion title="unknown">
+  No delivery attempts yet. This is normal for newly created subscriptions.
+</Accordion>
+
+## Best Practices
+
+<Steps>
+  <Step title="Always verify signatures">
+    Use the signing secret to validate that requests are from Airweave. Never skip signature verification in production.
+  </Step>
+  
+  <Step title="Respond quickly">
+    Return a `200 OK` response as soon as you receive the webhook. Process the event asynchronously if needed.
+  </Step>
+  
+  <Step title="Handle retries">
+    Make your endpoint idempotent. Airweave may deliver the same event multiple times during retries.
+  </Step>
+  
+  <Step title="Monitor health status">
+    Check subscription health regularly. Set up alerts for `failing` status.
+  </Step>
+  
+  <Step title="Use HTTPS">
+    Webhook URLs must use HTTPS. Use ngrok or similar tools for local development.
+  </Step>
+</Steps>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Trigger Workflows" icon="bolt">
+    Start a data pipeline, refresh a cache, or kick off downstream processing when a sync completes.
+  </Card>
+  
+  <Card title="Send Alerts" icon="bell">
+    Notify your team via Slack, email, or PagerDuty when a sync fails or a connection is removed.
+  </Card>
+  
+  <Card title="Track Infrastructure" icon="sitemap">
+    Know the moment a source connection is added, authenticated, or deleted, or when collections change.
+  </Card>
+  
+  <Card title="Audit & Logging" icon="scroll">
+    Record every lifecycle event to your logging system for compliance or debugging.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="database" href="/collections">
+    Learn about organizing data with collections
+  </Card>
+  
+  <Card title="Search" icon="magnifying-glass" href="/search">
+    Search across your synced data
+  </Card>
+</CardGroup>

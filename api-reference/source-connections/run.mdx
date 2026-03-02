@@ -1,0 +1,149 @@
+---
+title: 'Run Sync'
+api: 'POST /v1/source-connections/{id}/run'
+description: 'Trigger a data synchronization job for a source connection'
+---
+
+## Overview
+
+Start an asynchronous sync job that pulls the latest data from the connected source. The job runs in the background and you can monitor its progress using the jobs endpoint.
+
+For continuous sync connections, this performs an incremental sync by default. Use `force_full_sync=true` to perform a complete re-sync of all data.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the source connection to sync
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="force_full_sync" type="boolean" default={false}>
+  Force a full sync ignoring cursor data
+  
+  Only applies to continuous sync connections. Non-continuous connections always perform full syncs.
+</ParamField>
+
+## Response
+
+Returns a sync job object.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the sync job
+</ResponseField>
+
+<ResponseField name="source_connection_id" type="string" required>
+  ID of the source connection this job belongs to
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current status: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, or `CANCELLING`
+</ResponseField>
+
+<ResponseField name="started_at" type="string">
+  When the job started execution (ISO 8601)
+</ResponseField>
+
+<ResponseField name="completed_at" type="string">
+  When the job finished (ISO 8601). Null if still running.
+</ResponseField>
+
+<ResponseField name="duration_seconds" type="number">
+  Total execution time in seconds. Null if still running.
+</ResponseField>
+
+<ResponseField name="entities_inserted" type="integer" required>
+  Number of new entities created during this sync
+</ResponseField>
+
+<ResponseField name="entities_updated" type="integer" required>
+  Number of existing entities updated during this sync
+</ResponseField>
+
+<ResponseField name="entities_deleted" type="integer" required>
+  Number of entities removed during this sync
+</ResponseField>
+
+<ResponseField name="entities_failed" type="integer" required>
+  Number of entities that failed to process
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the job failed
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000/run" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000/run"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.post(url, headers=headers)
+job = response.json()
+print(f"Sync job started: {job['id']}")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000/run';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers
+});
+const job = await response.json();
+console.log(`Sync job started: ${job.id}`);
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "770e8400-e29b-41d4-a716-446655440002",
+  "source_connection_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "PENDING",
+  "started_at": null,
+  "completed_at": null,
+  "duration_seconds": null,
+  "entities_inserted": 0,
+  "entities_updated": 0,
+  "entities_deleted": 0,
+  "entities_failed": 0,
+  "error": null,
+  "error_details": null
+}
+```
+
+## Job Statuses
+
+- **PENDING**: Job is queued, waiting for the worker to pick it up
+- **RUNNING**: Sync is actively pulling and processing data
+- **COMPLETED**: Sync finished successfully
+- **FAILED**: Sync encountered an unrecoverable error
+- **CANCELLING**: Cancellation has been requested. Worker is stopping.
+- **CANCELLED**: Sync was cancelled
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Source connection with the specified ID does not exist
+</ResponseField>
+
+<ResponseField name="409 Conflict">
+  A sync is already running for this connection
+</ResponseField>

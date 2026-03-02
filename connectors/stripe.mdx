@@ -1,0 +1,81 @@
+---
+title: Stripe
+description: Connect Stripe to Airweave to sync payment and financial data
+---
+
+Connect Stripe to Airweave to make your payment data searchable by AI agents.
+
+## What Gets Synced
+
+The Stripe connector syncs:
+
+- **Customers** - Customer accounts
+- **Charges** - Payment transactions
+- **Invoices** - Billing invoices
+- **Subscriptions** - Recurring subscriptions
+- **Payment Intents** - Payment flows
+- **Refunds** - Refund transactions
+- **Balance Transactions** - Account balance events
+- **Events** - Webhook events
+
+## Authentication
+
+This connector uses **API Key** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Get Stripe API Key">
+    In Stripe Dashboard, go to Developers → API keys. Copy your secret key (starts with `sk_test_` or `sk_live_`).
+  </Step>
+  
+  <Step title="Add Stripe Connection">
+    In Airweave, click **Add Source** → **Stripe** and enter your API key.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Stripe data.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Stripe Customers
+
+Customer accounts.
+
+**Key fields:**
+- Email and phone
+- Description
+- Currency and payment methods
+- Metadata
+
+### Stripe Charges
+
+Payment transactions.
+
+**Key fields:**
+- Amount and currency
+- Status (paid, failed, refunded)
+- Customer and invoice
+- Receipt URL
+
+### Stripe Subscriptions
+
+Recurring subscriptions.
+
+**Key fields:**
+- Status (active, canceled, past_due)
+- Current period dates
+- Customer
+- Metadata
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/stripe.py"
+>
+  Explore the Stripe connector implementation on GitHub
+</Card>

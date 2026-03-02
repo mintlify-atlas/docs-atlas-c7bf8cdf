@@ -1,0 +1,92 @@
+---
+title: Google Drive
+description: Connect Google Drive to Airweave to sync files and folders
+---
+
+Connect Google Drive to Airweave to make your files and documents searchable by AI agents.
+
+## What Gets Synced
+
+The Google Drive connector syncs:
+
+- **Drives** - Shared drives (Team Drives)
+- **Files** - All file types from My Drive and Shared Drives
+- **Folders** - Folder structure and metadata
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials. You'll need to:
+
+1. Create a Google Cloud project
+2. Enable the Google Drive API
+3. Configure OAuth consent screen
+4. Create OAuth credentials
+5. Provide Client ID and Client Secret
+
+## Configuration
+
+### Include Patterns (Optional)
+
+Filter which files to sync using path patterns:
+- `my_folder/*` - All files in my_folder
+- `my_folder/my_file.pdf` - Specific file
+- Leave empty to sync all files
+
+## Setup
+
+<Steps>
+  <Step title="Create Google Cloud OAuth App">
+    Follow [Google's OAuth setup guide](https://developers.google.com/workspace/guides/create-credentials#oauth-client-id) to create OAuth credentials for Google Drive.
+  </Step>
+  
+  <Step title="Add Required Scopes">
+    In your OAuth consent screen, add these scopes:
+    - `https://www.googleapis.com/auth/drive`
+    - `https://www.googleapis.com/auth/drive.readonly`
+    - `https://www.googleapis.com/auth/drive.metadata`
+  </Step>
+  
+  <Step title="Add Google Drive Connection">
+    In Airweave, click **Add Source** → **Google Drive**, then enter your Client ID and Client Secret.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Complete the OAuth flow to grant Airweave access to your Google Drive.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Google Drive Files
+
+Files with full metadata.
+
+**Key fields:**
+- File name and description
+- Created/modified timestamps
+- Parent folders
+- Sharing settings
+- File type and size
+
+### Shared Drives
+
+Team/shared drive metadata.
+
+**Key fields:**
+- Drive name and color
+- Organization unit
+- Created timestamp
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/google_drive.py"
+>
+  Explore the Google Drive connector implementation on GitHub
+</Card>
+
+<Note>
+For detailed OAuth setup instructions, see the [Gmail connector documentation](/connectors/gmail) which uses the same Google Cloud project setup.
+</Note>

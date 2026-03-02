@@ -1,0 +1,92 @@
+---
+title: Zendesk
+description: Connect Zendesk to Airweave to sync support tickets
+---
+
+Connect Zendesk to Airweave to make your customer support data searchable by AI agents.
+
+## What Gets Synced
+
+The Zendesk connector syncs:
+
+- **Tickets** - Support tickets with full history
+- **Comments** - Ticket comments and conversations
+- **Users** - Agents and end-users
+- **Organizations** - Customer organizations
+- **Attachments** - File attachments
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials (BYOC).
+
+## Configuration
+
+### Subdomain (Required)
+
+Your Zendesk subdomain only (e.g., `mycompany` NOT `mycompany.zendesk.com`).
+
+### Exclude Closed Tickets (Optional)
+
+Skip closed tickets during sync for faster performance.
+
+## Setup
+
+<Steps>
+  <Step title="Create Zendesk OAuth Client">
+    1. In Zendesk Admin Center, go to Apps and integrations → APIs → OAuth clients
+    2. Click **Add OAuth client**
+    3. Configure:
+       - Name: `Airweave`
+       - Type: **Confidential** (required)
+       - Redirect URL: `https://api.airweave.ai/source-connections/callback`
+    4. Save and copy the Client ID and Secret
+    5. Set status to **Active**
+  </Step>
+  
+  <Step title="Add Zendesk Connection">
+    In Airweave, enter:
+    - Subdomain (e.g., `mycompany`)
+    - Client ID and Client Secret
+  </Step>
+  
+  <Step title="Authorize Access">
+    Complete the OAuth flow.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Zendesk Tickets
+
+Support tickets with full context.
+
+**Key fields:**
+- Subject and description
+- Status and priority
+- Requester and assignee
+- Tags and custom fields
+- Organization and group
+
+### Zendesk Comments
+
+Ticket comments and internal notes.
+
+**Key fields:**
+- Comment body (plain and HTML)
+- Author and timestamp
+- Public/internal flag
+- Associated ticket
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/zendesk.py"
+>
+  Explore the Zendesk connector implementation on GitHub
+</Card>
+
+<Note>
+For detailed OAuth setup instructions with screenshots, see the source documentation in the GitHub repository.
+</Note>

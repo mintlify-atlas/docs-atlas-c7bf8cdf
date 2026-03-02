@@ -1,0 +1,73 @@
+---
+title: Outlook Mail
+description: Connect Outlook to Airweave to sync email messages
+---
+
+Connect Outlook to Airweave to make your Microsoft email searchable by AI agents.
+
+## What Gets Synced
+
+The Outlook Mail connector syncs:
+
+- **Mail Folders** - Folder hierarchy
+- **Messages** - Email messages
+- **Attachments** - File attachments
+
+## Authentication
+
+This connector uses **OAuth 2.0** via Microsoft Graph API.
+
+## Configuration
+
+### After Date (Required)
+
+Sync emails after this date (format: `YYYY/MM/DD` or `YYYY-MM-DD`).
+
+### Included Folders (Optional)
+
+Folder names to include (e.g., `inbox`, `sentitems`). Defaults to inbox and sent.
+
+### Excluded Folders (Optional)
+
+Folder names to exclude (e.g., `junkemail`, `deleteditems`). Defaults to junk and deleted.
+
+## Setup
+
+<Steps>
+  <Step title="Add Outlook Mail Connection">
+    In Airweave, click **Add Source** → **Outlook Mail**.
+  </Step>
+  
+  <Step title="Configure Sync">
+    Enter:
+    - After date (e.g., `2024/01/01`)
+    - Optional: Include/exclude folders
+  </Step>
+  
+  <Step title="Authorize Access">
+    Sign in with your Microsoft account.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Outlook Messages
+
+Email messages with metadata.
+
+**Key fields:**
+- Subject and sender
+- To, CC recipients
+- Sent/received dates
+- Folder name
+- Body preview
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/outlook_mail.py"
+>
+  Explore the Outlook Mail connector implementation on GitHub
+</Card>

@@ -1,0 +1,222 @@
+---
+title: 'Get Source Connection'
+api: 'GET /v1/source-connections/{id}'
+description: 'Retrieve details of a specific source connection'
+---
+
+## Overview
+
+Retrieve complete information about a source connection including:
+- Configuration settings
+- Authentication status
+- Sync schedule and history
+- Entity statistics
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the source connection
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  Organization this connection belongs to
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the connection
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Optional description of the connection's purpose
+</ResponseField>
+
+<ResponseField name="short_name" type="string" required>
+  Source type identifier (e.g., "github", "slack")
+</ResponseField>
+
+<ResponseField name="readable_collection_id" type="string" required>
+  Collection this connection belongs to
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current operational status
+</ResponseField>
+
+<ResponseField name="auth" type="object" required>
+  Authentication status and details
+  
+  <Expandable title="properties">
+    <ResponseField name="method" type="string">
+      Authentication method used
+    </ResponseField>
+    
+    <ResponseField name="authenticated" type="boolean">
+      Whether credentials are valid
+    </ResponseField>
+    
+    <ResponseField name="authenticated_at" type="string">
+      When authentication was completed
+    </ResponseField>
+    
+    <ResponseField name="expires_at" type="string">
+      When credentials expire (for OAuth)
+    </ResponseField>
+    
+    <ResponseField name="auth_url" type="string">
+      OAuth authorization URL (for pending flows)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="config" type="object">
+  Source-specific configuration values
+</ResponseField>
+
+<ResponseField name="schedule" type="object">
+  Sync schedule configuration
+  
+  <Expandable title="properties">
+    <ResponseField name="cron" type="string">
+      Cron expression for scheduled syncs
+    </ResponseField>
+    
+    <ResponseField name="next_run" type="string">
+      Next scheduled sync time
+    </ResponseField>
+    
+    <ResponseField name="continuous" type="boolean">
+      Whether continuous sync is enabled
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="sync" type="object">
+  Sync execution history and statistics
+  
+  <Expandable title="properties">
+    <ResponseField name="total_runs" type="integer">
+      Total number of sync jobs
+    </ResponseField>
+    
+    <ResponseField name="successful_runs" type="integer">
+      Number of successful syncs
+    </ResponseField>
+    
+    <ResponseField name="failed_runs" type="integer">
+      Number of failed syncs
+    </ResponseField>
+    
+    <ResponseField name="last_job" type="object">
+      Details of the most recent sync job
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="entities" type="object">
+  Summary of synced entities
+  
+  <Expandable title="properties">
+    <ResponseField name="total_entities" type="integer">
+      Total entity count
+    </ResponseField>
+    
+    <ResponseField name="by_type" type="object">
+      Entity counts broken down by type
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.get(url, headers=headers)
+connection = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const connection = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "GitHub Docs Repo",
+  "description": "Main documentation repository",
+  "short_name": "github",
+  "readable_collection_id": "documentation-ab123",
+  "status": "ACTIVE",
+  "created_at": "2024-03-15T09:30:00Z",
+  "modified_at": "2024-03-15T14:22:15Z",
+  "auth": {
+    "method": "direct",
+    "authenticated": true,
+    "authenticated_at": "2024-03-15T09:30:00Z"
+  },
+  "config": {
+    "repo_name": "company/docs",
+    "branch": "main"
+  },
+  "schedule": {
+    "cron": "0 */6 * * *",
+    "next_run": "2024-03-15T18:00:00Z"
+  },
+  "sync": {
+    "total_runs": 15,
+    "successful_runs": 14,
+    "failed_runs": 1,
+    "last_job": {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "status": "COMPLETED",
+      "started_at": "2024-03-15T12:00:00Z",
+      "completed_at": "2024-03-15T12:05:32Z",
+      "duration_seconds": 332,
+      "entities_inserted": 45,
+      "entities_updated": 12
+    }
+  },
+  "entities": {
+    "total_entities": 1250,
+    "by_type": {
+      "file": {"count": 1250}
+    }
+  },
+  "federated_search": false
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Source connection with the specified ID does not exist
+</ResponseField>

@@ -1,0 +1,127 @@
+---
+title: 'List Source Connections'
+api: 'GET /v1/source-connections'
+description: 'Retrieve all source connections for your organization'
+---
+
+## Overview
+
+Retrieve all source connections in your organization. Returns a lightweight list with essential fields for display and navigation.
+
+For full connection details including sync history, use the GET /{id} endpoint.
+
+## Query Parameters
+
+<ParamField query="collection" type="string">
+  Filter by collection readable ID
+  
+  Example: "customer-support-tickets-x7k9m"
+</ParamField>
+
+<ParamField query="skip" type="integer" default={0}>
+  Number of connections to skip for pagination (minimum: 0)
+</ParamField>
+
+<ParamField query="limit" type="integer" default={100}>
+  Maximum number of connections to return (1-1000)
+</ParamField>
+
+## Response
+
+Returns an array of source connection objects.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the source connection
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the connection
+</ResponseField>
+
+<ResponseField name="short_name" type="string" required>
+  Source type identifier (e.g., "github", "slack")
+</ResponseField>
+
+<ResponseField name="readable_collection_id" type="string" required>
+  Collection this connection belongs to
+</ResponseField>
+
+<ResponseField name="is_authenticated" type="boolean" required>
+  Whether the connection has valid credentials
+</ResponseField>
+
+<ResponseField name="entity_count" type="integer" required>
+  Total number of entities synced from this connection
+</ResponseField>
+
+<ResponseField name="auth_method" type="string" required>
+  Authentication method: `direct`, `oauth_browser`, `oauth_token`, `oauth_byoc`, or `auth_provider`
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current status: `PENDING_AUTH`, `ACTIVE`, `SYNCING`, `INACTIVE`, or `ERROR`
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp when created
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  ISO 8601 timestamp when last modified
+</ResponseField>
+
+<ResponseField name="federated_search" type="boolean" required>
+  Whether this source uses federated (real-time) search
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/source-connections?limit=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+params = {"limit": 10}
+
+response = requests.get(url, headers=headers, params=params)
+connections = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/source-connections?limit=10';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const connections = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "GitHub Docs Repo",
+    "short_name": "github",
+    "readable_collection_id": "documentation-ab123",
+    "created_at": "2024-03-15T09:30:00Z",
+    "modified_at": "2024-03-15T14:22:15Z",
+    "is_authenticated": true,
+    "entity_count": 1250,
+    "federated_search": false,
+    "auth_method": "direct",
+    "status": "ACTIVE"
+  }
+]
+```

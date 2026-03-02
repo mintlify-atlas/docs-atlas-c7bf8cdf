@@ -1,0 +1,868 @@
+---
+title: 'Kubernetes Deployment'
+description: 'Deploy Airweave on Kubernetes for production-scale workloads'
+---
+
+<Info>
+  Airweave does not currently provide official Helm charts or Kubernetes manifests in the repository. This guide outlines the architecture and considerations for a production Kubernetes deployment.
+</Info>
+
+## Architecture Overview
+
+A production Kubernetes deployment of Airweave consists of:
+
+### Core Application
+
+<AccordionGroup>
+  <Accordion title="Backend API (Deployment)">
+    **Image**: `ghcr.io/airweave-ai/airweave-backend:latest`
+    
+    **Replicas**: 2-5 (horizontal scaling)
+    
+    **Resources**:
+    ```yaml
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    ```
+    
+    **Probes**:
+    - Liveness: `GET /health`
+    - Readiness: `GET /health/ready`
+    
+    **Environment**:
+    - Load from ConfigMap and Secrets
+    - Override `POSTGRES_HOST`, `REDIS_HOST`, etc. for K8s service names
+  </Accordion>
+
+  <Accordion title="Frontend (Deployment)">
+    **Image**: `ghcr.io/airweave-ai/airweave-frontend:latest`
+    
+    **Replicas**: 2-3
+    
+    **Resources**:
+    ```yaml
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    ```
+    
+    **Environment**:
+    - `API_URL`: Internal service URL or external ingress
+    - `ENABLE_AUTH`: `true` for production
+  </Accordion>
+
+  <Accordion title="Temporal Worker (Deployment)">
+    **Image**: `ghcr.io/airweave-ai/airweave-backend:latest`
+    
+    **Entrypoint override**:
+    ```yaml
+    command: ["python", "-m", "airweave.platform.temporal.worker"]
+    ```
+    
+    **Replicas**: 2-10 (based on sync workload)
+    
+    **Resources**:
+    ```yaml
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+    ```
+    
+    **Scaling**: Use HPA based on Temporal task queue depth
+  </Accordion>
+</AccordionGroup>
+
+### Data Layer
+
+<AccordionGroup>
+  <Accordion title="PostgreSQL (StatefulSet)">
+    **Recommended**: Use managed database service (AWS RDS, Azure Database, GCP Cloud SQL)
+    
+    **If self-hosting**:
+    - StatefulSet with 1-3 replicas (primary + read replicas)
+    - PersistentVolumeClaim with 50GB-500GB storage
+    - Regular backups via CronJob
+    
+    **Configuration**:
+    ```yaml
+    env:
+      - name: POSTGRES_DB
+        value: airweave
+      - name: POSTGRES_USER
+        valueFrom:
+          secretKeyRef:
+            name: postgres-secret
+            key: username
+      - name: POSTGRES_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: postgres-secret
+            key: password
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+    ```
+  </Accordion>
+
+  <Accordion title="Redis (StatefulSet)">
+    **Recommended**: Use managed service (AWS ElastiCache, Azure Cache, GCP Memorystore)
+    
+    **If self-hosting**:
+    - StatefulSet with sentinel for HA
+    - PersistentVolumeClaim for AOF persistence
+    
+    **Image**: `redis:7-alpine`
+    
+    **Resources**:
+    ```yaml
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+    ```
+  </Accordion>
+
+  <Accordion title="Vespa (StatefulSet)">
+    **Image**: `vespaengine/vespa:8`
+    
+    **StatefulSet configuration**:
+    ```yaml
+    replicas: 1  # Single node for small deployments
+    volumeClaimTemplates:
+      - metadata:
+          name: vespa-data
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 100Gi  # Scale based on index size
+    ```
+    
+    **Resources**:
+    ```yaml
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 4Gi
+      limits:
+        cpu: 8000m
+        memory: 16Gi
+    ```
+    
+    **Init Container**: Deploy Vespa application schema
+    ```yaml
+    initContainers:
+      - name: vespa-deploy
+        image: alpine:3.19
+        command: ["/bin/sh", "/scripts/init-vespa.sh"]
+        env:
+          - name: VESPA_CONFIG_SERVER
+            value: "http://localhost:19071"
+          - name: EMBEDDING_DIMENSIONS
+            valueFrom:
+              configMapKeyRef:
+                name: airweave-config
+                key: EMBEDDING_DIMENSIONS
+        volumeMounts:
+          - name: vespa-app
+            mountPath: /app
+          - name: init-script
+            mountPath: /scripts
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Orchestration
+
+<AccordionGroup>
+  <Accordion title="Temporal Server (StatefulSet)">
+    **Image**: `temporalio/auto-setup:1.24.2`
+    
+    **Recommended**: Use [Temporal Cloud](https://temporal.io/cloud) for production
+    
+    **If self-hosting**:
+    ```yaml
+    env:
+      - name: DB
+        value: postgres12
+      - name: POSTGRES_SEEDS
+        value: postgres-service
+      - name: POSTGRES_USER
+        valueFrom:
+          secretKeyRef:
+            name: postgres-secret
+            key: username
+      - name: POSTGRES_PWD
+        valueFrom:
+          secretKeyRef:
+            name: postgres-secret
+            key: password
+    ```
+    
+    **Ports**: 7233 (gRPC), 8233 (metrics)
+  </Accordion>
+
+  <Accordion title="Temporal UI (Deployment)">
+    **Image**: `temporalio/ui:2.26.2`
+    
+    **Replicas**: 1-2
+    
+    **Environment**:
+    ```yaml
+    env:
+      - name: TEMPORAL_ADDRESS
+        value: temporal-service:7233
+    ```
+  </Accordion>
+
+  <Accordion title="Svix (Deployment)">
+    **Image**: `svix/svix-server`
+    
+    **Replicas**: 2-3
+    
+    **Environment**:
+    ```yaml
+    env:
+      - name: SVIX_REDIS_DSN
+        value: redis://redis-service:6379
+      - name: SVIX_DB_DSN
+        value: postgresql://user:pass@postgres-service:5432/svix
+      - name: SVIX_JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: svix-secret
+            key: jwt-secret
+      - name: SVIX_QUEUE_TYPE
+        value: redis
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Management
+
+### ConfigMap Example
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airweave-config
+  namespace: airweave
+data:
+  # Database
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "airweave"
+  
+  # Redis
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # Vespa
+  VESPA_URL: "http://vespa-service"
+  VESPA_PORT: "8081"
+  
+  # Temporal
+  TEMPORAL_HOST: "temporal-service"
+  TEMPORAL_PORT: "7233"
+  TEMPORAL_NAMESPACE: "default"
+  TEMPORAL_TASK_QUEUE: "airweave-sync-queue"
+  
+  # Svix
+  SVIX_URL: "http://svix-service:8071"
+  
+  # Embeddings
+  DENSE_EMBEDDER: "openai_text_embedding_3_small"
+  EMBEDDING_DIMENSIONS: "1536"
+  SPARSE_EMBEDDER: "fastembed_bm25"
+  
+  # Storage
+  STORAGE_BACKEND: "aws"  # or azure, gcp
+  STORAGE_AWS_REGION: "us-east-1"
+  STORAGE_AWS_BUCKET: "airweave-production"
+  
+  # Application
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  RUN_ALEMBIC_MIGRATIONS: "true"
+  AUTH_ENABLED: "true"
+```
+
+### Secret Example
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: airweave-secrets
+  namespace: airweave
+type: Opaque
+stringData:
+  # Database
+  POSTGRES_USER: "airweave"
+  POSTGRES_PASSWORD: "<strong-password>"
+  
+  # Authentication
+  ENCRYPTION_KEY: "<base64-key>"
+  STATE_SECRET: "<state-secret>"
+  
+  # Auth0
+  AUTH0_DOMAIN: "your-tenant.auth0.com"
+  AUTH0_AUDIENCE: "https://api.airweave.ai"
+  AUTH0_RULE_NAMESPACE: "https://airweave.ai"
+  
+  # API Keys
+  OPENAI_API_KEY: "sk-..."
+  ANTHROPIC_API_KEY: "sk-ant-..."
+  MISTRAL_API_KEY: "..."
+  
+  # Cloud Storage (AWS example)
+  AWS_ACCESS_KEY_ID: "AKIA..."
+  AWS_SECRET_ACCESS_KEY: "..."
+  
+  # Svix
+  SVIX_JWT_SECRET: "<random-32-byte-secret>"
+```
+
+## Service Definitions
+
+```yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: airweave
+spec:
+  selector:
+    app: airweave-backend
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: airweave
+spec:
+  selector:
+    app: airweave-frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vespa-service
+  namespace: airweave
+spec:
+  selector:
+    app: vespa
+  ports:
+    - name: document-api
+      port: 8081
+      targetPort: 8081
+    - name: config
+      port: 19071
+      targetPort: 19071
+  type: ClusterIP
+  clusterIP: None  # Headless for StatefulSet
+```
+
+## Ingress Configuration
+
+<CodeGroup>
+
+```yaml NGINX Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: airweave-ingress
+  namespace: airweave
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.yourdomain.com
+        - api.yourdomain.com
+      secretName: airweave-tls
+  rules:
+    - host: app.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 8080
+    - host: api.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8001
+```
+
+```yaml Traefik Ingress
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: airweave-ingress
+  namespace: airweave
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`app.yourdomain.com`)
+      kind: Rule
+      services:
+        - name: frontend-service
+          port: 8080
+    - match: Host(`api.yourdomain.com`)
+      kind: Rule
+      services:
+        - name: backend-service
+          port: 8001
+  tls:
+    certResolver: letsencrypt
+```
+
+</CodeGroup>
+
+## Storage Considerations
+
+### Persistent Volumes
+
+<Accordion title="PostgreSQL PVC">
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: airweave
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: fast-ssd  # Use SSD for better performance
+```
+</Accordion>
+
+<Accordion title="Vespa PVC">
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vespa-pvc
+  namespace: airweave
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi  # Scale based on index size
+  storageClassName: fast-ssd
+```
+</Accordion>
+
+### Cloud Storage (Recommended)
+
+For file attachments, use cloud-native storage:
+
+<Tabs>
+  <Tab title="AWS S3">
+    ```yaml
+    # ConfigMap
+    STORAGE_BACKEND: "aws"
+    STORAGE_AWS_BUCKET: "airweave-production"
+    STORAGE_AWS_REGION: "us-east-1"
+    
+    # Use IRSA (IAM Roles for Service Accounts) instead of access keys
+    # Annotate ServiceAccount:
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: airweave-backend
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/airweave-s3-access
+    ```
+  </Tab>
+  
+  <Tab title="Azure Blob">
+    ```yaml
+    # ConfigMap
+    STORAGE_BACKEND: "azure"
+    STORAGE_AZURE_ACCOUNT: "airweavestorage"
+    STORAGE_AZURE_CONTAINER: "production"
+    
+    # Use Managed Identity or Azure AD Workload Identity
+    # Annotate ServiceAccount:
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: airweave-backend
+      annotations:
+        azure.workload.identity/client-id: "<client-id>"
+    ```
+  </Tab>
+  
+  <Tab title="GCP Storage">
+    ```yaml
+    # ConfigMap
+    STORAGE_BACKEND: "gcp"
+    STORAGE_GCP_BUCKET: "airweave-production"
+    STORAGE_GCP_PROJECT: "your-project-id"
+    
+    # Use Workload Identity
+    # Annotate ServiceAccount:
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: airweave-backend
+      annotations:
+        iam.gke.io/gcp-service-account: airweave@project.iam.gserviceaccount.com
+    ```
+  </Tab>
+</Tabs>
+
+## Autoscaling
+
+### Horizontal Pod Autoscaler (HPA)
+
+<CodeGroup>
+
+```yaml Backend HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: airweave
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: airweave-backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+```
+
+```yaml Worker HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: temporal-worker-hpa
+  namespace: airweave
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: temporal-worker
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+```
+
+</CodeGroup>
+
+## Monitoring & Observability
+
+### Prometheus Metrics
+
+```yaml
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: airweave-backend
+  namespace: airweave
+spec:
+  selector:
+    matchLabels:
+      app: airweave-backend
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+```
+
+### Health Checks
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8001
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8001
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+```
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Use NetworkPolicies">
+    Restrict pod-to-pod communication:
+    ```yaml
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: backend-netpol
+      namespace: airweave
+    spec:
+      podSelector:
+        matchLabels:
+          app: airweave-backend
+      policyTypes:
+        - Ingress
+        - Egress
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  app: airweave-frontend
+          ports:
+            - protocol: TCP
+              port: 8001
+    ```
+  </Step>
+
+  <Step title="Enable Pod Security Standards">
+    ```yaml
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: airweave
+      labels:
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/audit: restricted
+        pod-security.kubernetes.io/warn: restricted
+    ```
+  </Step>
+
+  <Step title="Use Secrets Management">
+    Integrate with external secret managers:
+    - AWS Secrets Manager via [External Secrets Operator](https://external-secrets.io/)
+    - Azure Key Vault via [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/)
+    - HashiCorp Vault
+  </Step>
+
+  <Step title="Run as non-root">
+    ```yaml
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+    ```
+  </Step>
+</Steps>
+
+## Migration from Docker Compose
+
+<Steps>
+  <Step title="Export existing data">
+    ```bash
+    # PostgreSQL
+    docker exec airweave-db pg_dump -U airweave airweave > airweave.sql
+    
+    # Vespa indices (if needed)
+    docker exec airweave-vespa vespa-visit > vespa-dump.json
+    ```
+  </Step>
+
+  <Step title="Create Kubernetes secrets from .env">
+    ```bash
+    kubectl create secret generic airweave-secrets \
+      --from-env-file=.env \
+      --namespace=airweave
+    ```
+  </Step>
+
+  <Step title="Deploy to Kubernetes">
+    ```bash
+    kubectl apply -f k8s/namespace.yaml
+    kubectl apply -f k8s/configmap.yaml
+    kubectl apply -f k8s/secrets.yaml
+    kubectl apply -f k8s/postgres.yaml
+    kubectl apply -f k8s/redis.yaml
+    kubectl apply -f k8s/vespa.yaml
+    kubectl apply -f k8s/temporal.yaml
+    kubectl apply -f k8s/backend.yaml
+    kubectl apply -f k8s/frontend.yaml
+    kubectl apply -f k8s/ingress.yaml
+    ```
+  </Step>
+
+  <Step title="Import data">
+    ```bash
+    # PostgreSQL
+    kubectl exec -i postgres-0 -n airweave -- \
+      psql -U airweave airweave < airweave.sql
+    ```
+  </Step>
+
+  <Step title="Verify deployment">
+    ```bash
+    kubectl get pods -n airweave
+    kubectl logs -f deployment/airweave-backend -n airweave
+    curl https://api.yourdomain.com/health
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Pod stuck in Pending">
+    ```bash
+    kubectl describe pod <pod-name> -n airweave
+    ```
+    
+    Common causes:
+    - Insufficient resources (CPU/memory)
+    - PVC provisioning failure
+    - Node selector mismatch
+  </Accordion>
+
+  <Accordion title="Database migrations failing">
+    ```bash
+    kubectl logs deployment/airweave-backend -n airweave | grep alembic
+    ```
+    
+    Solution:
+    - Ensure `RUN_ALEMBIC_MIGRATIONS=true`
+    - Check database credentials
+    - Verify network connectivity to PostgreSQL
+  </Accordion>
+
+  <Accordion title="Vespa not initializing">
+    ```bash
+    kubectl logs vespa-0 -n airweave
+    kubectl logs vespa-0 -c vespa-deploy -n airweave
+    ```
+    
+    Check:
+    - PVC mounted correctly
+    - Embedding dimensions match config
+    - Sufficient memory allocated
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Production Checklist" icon="check">
+  - [ ] Enable authentication
+  - [ ] Configure TLS/SSL
+  - [ ] Set up monitoring
+  - [ ] Configure backups
+  - [ ] Test disaster recovery
+  - [ ] Set resource limits
+  - [ ] Enable autoscaling
+</Card>
+
+<Card title="Configuration Guide" icon="gear" href="/deployment/configuration">
+  Review all environment variables and tuning options
+</Card>
+
+<Card title="Monitoring" icon="chart-line">
+  - Backend metrics: `/metrics`
+  - Temporal UI: Port 8088
+  - Database monitoring
+  - Log aggregation (ELK, Loki)
+</Card>
+
+<Card title="Get Help" icon="question">
+  - [GitHub Issues](https://github.com/airweave-ai/airweave/issues)
+  - [Discord Community](https://discord.gg/gDuebsWGkn)
+  - [Documentation](https://docs.airweave.ai)
+</Card>
+
+</CardGroup>

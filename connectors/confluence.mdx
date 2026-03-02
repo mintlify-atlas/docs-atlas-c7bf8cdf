@@ -1,0 +1,87 @@
+---
+title: Confluence
+description: Connect Confluence to Airweave to sync spaces, pages, and content
+---
+
+Connect Confluence to Airweave to make your team's wiki pages, documentation, and knowledge base searchable by AI agents.
+
+## What Gets Synced
+
+The Confluence connector syncs:
+
+- **Spaces** - Workspace containers and their metadata
+- **Pages** - Full HTML content from wiki pages
+- **Blog Posts** - Published blog content
+- **Comments** - Comments on pages and blog posts
+- **Labels** - Tags and labels for organization
+- **Attachments** - Files embedded in pages
+
+## Authentication
+
+This connector uses **OAuth 2.0** authentication. When you connect Confluence through the Airweave UI, you'll be prompted to authorize access to your Confluence site.
+
+## Setup
+
+<Steps>
+  <Step title="Add Confluence Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Confluence**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to access your Confluence Cloud instance.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Confluence content.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Confluence Spaces
+
+Workspace containers that organize pages.
+
+**Key fields:**
+- Space ID, key, and name
+- Description and status
+- Homepage reference
+
+### Confluence Pages
+
+Wiki pages with full HTML content.
+
+**Key fields:**
+- Page ID and title
+- HTML body content
+- Version number
+- Space association
+- Created/updated timestamps
+
+### Confluence Blog Posts
+
+Blog entries published in Confluence.
+
+**Key fields:**
+- Post ID and title  
+- HTML body content
+- Space and author info
+- Publication status
+
+### Comments, Labels, and More
+
+The connector also syncs comments, labels, databases, folders, whiteboards, and custom content types.
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/confluence.py"
+>
+  Explore the Confluence connector implementation on GitHub
+</Card>
+
+<Note>
+The connector converts Confluence storage format to HTML for content extraction and processes embedded files and attachments.
+</Note>

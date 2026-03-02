@@ -1,0 +1,183 @@
+---
+title: 'List Entities'
+api: 'GET /v1/entities'
+description: 'Retrieve entities synced to your collections'
+---
+
+## Overview
+
+Retrieve entities that have been synced from your source connections. Entities represent the individual data items (documents, records, files, etc.) that are indexed and searchable within your collections.
+
+This endpoint provides access to the raw entity metadata stored in the PostgreSQL database. For searching entity content, use the [Search Collection](/api-reference/collections/search) endpoint instead.
+
+<Note>
+This is a low-level endpoint primarily used for debugging and monitoring. For most use cases, you should use the Collection Search API to query your data.
+</Note>
+
+## Query Parameters
+
+<ParamField query="skip" type="integer" default={0}>
+  Number of entities to skip for pagination (minimum: 0)
+</ParamField>
+
+<ParamField query="limit" type="integer" default={100}>
+  Maximum number of entities to return (1-1000)
+</ParamField>
+
+<ParamField query="source_connection_id" type="string">
+  Filter entities by source connection UUID
+</ParamField>
+
+<ParamField query="collection_readable_id" type="string">
+  Filter entities by collection readable ID
+</ParamField>
+
+## Response
+
+Returns an array of entity metadata objects.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier for this entity record
+</ResponseField>
+
+<ResponseField name="entity_id" type="string" required>
+  Source-specific entity identifier (may include chunk suffix)
+</ResponseField>
+
+<ResponseField name="sync_job_id" type="string" required>
+  UUID of the sync job that created/updated this entity
+</ResponseField>
+
+<ResponseField name="sync_id" type="string" required>
+  UUID of the sync configuration
+</ResponseField>
+
+<ResponseField name="entity_definition_id" type="string">
+  UUID of the entity definition (schema)
+</ResponseField>
+
+<ResponseField name="hash" type="string" required>
+  Content hash for deduplication and change detection
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  UUID of the organization that owns this entity
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp when this entity was first created
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  ISO 8601 timestamp when this entity was last modified
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/entities?limit=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/entities"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+params = {
+    "limit": 10,
+    "collection_readable_id": "documentation-ab123"
+}
+
+response = requests.get(url, headers=headers, params=params)
+entities = response.json()
+
+for entity in entities:
+    print(f"Entity: {entity['entity_id']} (created: {entity['created_at']})")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/entities?limit=10&collection_readable_id=documentation-ab123';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const entities = await response.json();
+
+entities.forEach(entity => {
+  console.log(`Entity: ${entity.entity_id} (created: ${entity.created_at})`);
+});
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+[
+  {
+    "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+    "entity_id": "docs/getting-started.md__chunk_0",
+    "sync_job_id": "770e8400-e29b-41d4-a716-446655440002",
+    "sync_id": "660e8400-e29b-41d4-a716-446655440001",
+    "entity_definition_id": "def12345-6789-abcd-ef01-234567890abc",
+    "hash": "sha256:a1b2c3d4e5f6...",
+    "organization_id": "org12345-6789-abcd-ef01-234567890abc",
+    "created_at": "2024-03-15T12:05:22Z",
+    "modified_at": "2024-03-15T12:05:22Z"
+  },
+  {
+    "id": "f2g3b4c5-d6e7-8901-bcde-f23456789012",
+    "entity_id": "docs/api-reference.md__chunk_0",
+    "sync_job_id": "770e8400-e29b-41d4-a716-446655440002",
+    "sync_id": "660e8400-e29b-41d4-a716-446655440001",
+    "entity_definition_id": "def12345-6789-abcd-ef01-234567890abc",
+    "hash": "sha256:b2c3d4e5f6a7...",
+    "organization_id": "org12345-6789-abcd-ef01-234567890abc",
+    "created_at": "2024-03-15T12:05:23Z",
+    "modified_at": "2024-03-15T12:05:23Z"
+  }
+]
+```
+
+## Use Cases
+
+### Monitoring Sync Progress
+
+Query entities by `sync_job_id` to see what was synced in a specific job:
+
+```python
+params = {
+    "sync_job_id": "770e8400-e29b-41d4-a716-446655440002",
+    "limit": 1000
+}
+```
+
+### Debugging Data Issues
+
+Inspect entity metadata to diagnose sync or search issues:
+
+```python
+params = {
+    "source_connection_id": "550e8400-e29b-41d4-a716-446655440000",
+    "limit": 10
+}
+```
+
+### Entity Count Analysis
+
+Count entities per collection for usage tracking:
+
+```python
+from collections import Counter
+
+entities = requests.get(url, headers=headers, params={"limit": 1000}).json()
+by_collection = Counter([e.get('collection_readable_id') for e in entities])
+```
+
+<Warning>
+This endpoint returns metadata only. To access entity content (text, embeddings, etc.), use the Search Collection endpoint or query the vector database directly.
+</Warning>

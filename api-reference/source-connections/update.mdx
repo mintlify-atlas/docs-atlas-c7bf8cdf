@@ -1,0 +1,181 @@
+---
+title: 'Update Source Connection'
+api: 'PATCH /v1/source-connections/{id}'
+description: "Update an existing source connection's configuration"
+---
+
+## Overview
+
+Update a source connection's configuration. You can modify:
+
+- **Name and description**: Display information
+- **Configuration**: Source-specific settings (e.g., repository name, filters)
+- **Schedule**: Cron expression for automatic syncs
+- **Authentication**: Update credentials (direct auth only)
+
+Only include the fields you want to change; omitted fields retain their current values.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the source connection to update
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only include fields you want to change.
+
+<ParamField body="name" type="string">
+  Updated display name for the connection (4-42 characters)
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description (max 255 characters)
+</ParamField>
+
+<ParamField body="config" type="object">
+  Updated source-specific configuration
+  
+  Example: `{"repo_name": "company/new-repo", "branch": "develop"}`
+</ParamField>
+
+<ParamField body="schedule" type="object">
+  Updated sync schedule configuration
+  
+  <Expandable title="properties">
+    <ParamField body="cron" type="string">
+      Cron expression for scheduled syncs
+    </ParamField>
+    
+    <ParamField body="continuous" type="boolean">
+      Enable continuous sync mode
+    </ParamField>
+    
+    <ParamField body="cursor_field" type="string">
+      Field for incremental sync
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="authentication" type="object">
+  Updated authentication credentials (direct auth only)
+  
+  <Expandable title="properties">
+    <ParamField body="credentials" type="object">
+      Updated authentication credentials
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+Returns the updated source connection object.
+
+<ResponseField name="id" type="string" required>
+  UUID of the connection
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Updated display name
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  ISO 8601 timestamp when last modified
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X PATCH https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production GitHub Repo",
+    "config": {
+      "repo_name": "company/new-repo",
+      "branch": "main"
+    }
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "name": "Production GitHub Repo",
+    "config": {
+        "repo_name": "company/new-repo",
+        "branch": "main"
+    }
+}
+
+response = requests.patch(url, headers=headers, json=data)
+connection = response.json()
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/source-connections/550e8400-e29b-41d4-a716-446655440000';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  name: 'Production GitHub Repo',
+  config: {
+    repo_name: 'company/new-repo',
+    branch: 'main'
+  }
+};
+
+const response = await fetch(url, {
+  method: 'PATCH',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+const connection = await response.json();
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "Production GitHub Repo",
+  "description": "Main documentation repository",
+  "short_name": "github",
+  "readable_collection_id": "documentation-ab123",
+  "status": "ACTIVE",
+  "created_at": "2024-03-15T09:30:00Z",
+  "modified_at": "2024-03-15T16:45:00Z",
+  "auth": {
+    "method": "direct",
+    "authenticated": true
+  },
+  "config": {
+    "repo_name": "company/new-repo",
+    "branch": "main"
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Source connection with the specified ID does not exist
+</ResponseField>
+
+<ResponseField name="422 Validation Error">
+  Invalid request body
+</ResponseField>

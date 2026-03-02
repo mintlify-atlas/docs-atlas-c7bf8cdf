@@ -1,0 +1,66 @@
+---
+title: Attio
+description: Connect Attio to Airweave to sync CRM data
+---
+
+Connect Attio to Airweave to make your modern CRM data searchable by AI agents.
+
+## What Gets Synced
+
+The Attio connector syncs:
+
+- **Objects** - Custom CRM objects (Companies, People, Deals, etc.)
+- **Lists** - Organized collections of records
+- **Records** - Individual CRM records with attributes
+- **Notes** - Notes attached to records
+
+## Authentication
+
+This connector uses **API Key** authentication.
+
+## Setup
+
+<Steps>
+  <Step title="Get Attio API Key">
+    In Attio, go to Workspace Settings → Developers to generate an API key.
+  </Step>
+  
+  <Step title="Add Attio Connection">
+    In Airweave, click **Add Source** → **Attio** and enter your API key.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your Attio workspace.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Attio Records
+
+Flexible CRM records with custom attributes.
+
+**Key fields:**
+- Record name and description
+- Email addresses and phone numbers
+- Custom attributes
+- Associated object/list
+
+### Attio Notes
+
+Notes attached to records.
+
+**Key fields:**
+- Note title and content
+- Author and timestamps
+- Associated record
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/attio.py"
+>
+  Explore the Attio connector implementation on GitHub
+</Card>

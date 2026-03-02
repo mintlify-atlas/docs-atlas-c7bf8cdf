@@ -1,0 +1,97 @@
+---
+title: Slack
+description: Connect Slack to Airweave using real-time federated search
+---
+
+Connect Slack to Airweave to make messages searchable by AI agents using real-time federated search.
+
+## What Gets Synced
+
+<Note>
+**Federated Search Approach**
+
+The Slack connector uses **federated search** - it queries Slack in real-time at search time rather than syncing all messages. This avoids Slack's strict rate limits and keeps your data in Slack.
+</Note>
+
+- **Messages** - Message content from all accessible channels
+- **Context** - Previous and next messages for conversation context  
+- **Metadata** - Channel names, timestamps, authors, and permalinks
+
+## Authentication
+
+This connector uses **OAuth 2.0** with the `search:read` scope for production, or a manual token for local development.
+
+## Setup
+
+### Production Setup (OAuth)
+
+<Steps>
+  <Step title="Add Slack Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Slack**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and authorize Airweave to search your Slack workspace.
+  </Step>
+  
+  <Step title="Search">
+    Your Slack workspace is now searchable. Queries to Airweave will automatically include results from Slack.
+  </Step>
+</Steps>
+
+### Local Development Setup (Manual Token)
+
+Slack doesn't allow OAuth flows for `localhost`, so for local development you need to create a token manually.
+
+<Steps>
+  <Step title="Create Slack App">
+    1. Go to [https://api.slack.com/apps](https://api.slack.com/apps)
+    2. Click **Create New App** → **From scratch**
+    3. Enter app name (e.g., "Airweave Local Dev") and select your workspace
+  </Step>
+  
+  <Step title="Add OAuth Scope">
+    1. Navigate to **OAuth & Permissions**
+    2. Under **User Token Scopes**, add `search:read`
+  </Step>
+  
+  <Step title="Install to Workspace">
+    1. Click **Install to Workspace** at the top of the OAuth & Permissions page
+    2. Review permissions and click **Allow**
+    3. Copy the **User OAuth Token** (starts with `xoxp-`)
+  </Step>
+  
+  <Step title="Add Token to Airweave">
+    In Airweave, select Slack and choose **Direct Token Injection**, then paste your User OAuth Token.
+  </Step>
+</Steps>
+
+## How Federated Search Works
+
+1. When you search in Airweave, your query is sent to Slack's `search.all` API in real-time
+2. Slack returns relevant messages from across your workspace
+3. Results are merged with data from your other sources using intelligent ranking
+4. **No data is stored in Airweave** - everything happens at search time
+
+## Supported Entities
+
+### Slack Messages
+
+Messages from federated search results.
+
+**Key fields:**
+- Message text and author
+- Channel ID and name
+- Timestamp and permalink
+- Previous/next messages for context
+- Search relevance score
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/slack.py"
+>
+  Explore the Slack connector implementation on GitHub
+</Card>

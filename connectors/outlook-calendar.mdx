@@ -1,0 +1,57 @@
+---
+title: Outlook Calendar
+description: Connect Outlook Calendar to Airweave to sync events
+---
+
+Connect Outlook Calendar to Airweave to make your Microsoft calendar events searchable by AI agents.
+
+## What Gets Synced
+
+The Outlook Calendar connector syncs:
+
+- **Calendars** - Calendar metadata
+- **Events** - Calendar events with attendees
+- **Attachments** - Event attachments
+
+## Authentication
+
+This connector uses **OAuth 2.0** via Microsoft Graph API.
+
+## Setup
+
+<Steps>
+  <Step title="Add Outlook Calendar Connection">
+    In Airweave, navigate to your collection and click **Add Source** → **Outlook Calendar**.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Click **Connect** and sign in with your Microsoft account.
+  </Step>
+  
+  <Step title="Start Sync">
+    Airweave will begin syncing your calendar events.
+  </Step>
+</Steps>
+
+## Supported Entities
+
+### Outlook Calendar Events
+
+Events with full meeting details.
+
+**Key fields:**
+- Subject and body
+- Start/end date and time
+- Attendees and organizer
+- Location and online meeting URL
+- Recurrence pattern
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/outlook_calendar.py"
+>
+  Explore the Outlook Calendar connector implementation on GitHub
+</Card>

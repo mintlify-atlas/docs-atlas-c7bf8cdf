@@ -1,0 +1,44 @@
+---
+title: Google Docs
+description: Connect Google Docs to Airweave to sync document content
+---
+
+Connect Google Docs to Airweave to make your documents searchable by AI agents.
+
+## What Gets Synced
+
+The Google Docs connector syncs document content from Google Docs files in your Google Drive.
+
+<Note>
+This connector works in conjunction with the Google Drive connector. Make sure you have Google Drive connected as well.
+</Note>
+
+## Authentication
+
+This connector uses **OAuth 2.0** with custom credentials (same as Google Drive).
+
+## Setup
+
+<Steps>
+  <Step title="Set Up Google Drive First">
+    Follow the [Google Drive setup instructions](/connectors/google-drive) to configure OAuth.
+  </Step>
+  
+  <Step title="Add Google Docs Connection">
+    In Airweave, click **Add Source** → **Google Docs** and use the same OAuth credentials.
+  </Step>
+  
+  <Step title="Authorize Access">
+    Complete the OAuth flow to grant access.
+  </Step>
+</Steps>
+
+## Implementation Details
+
+<Card
+  title="View Source Code"
+  icon="brands github"
+  href="https://github.com/airweave-ai/airweave/tree/main/backend/airweave/platform/sources/google_docs.py"
+>
+  Explore the Google Docs connector implementation on GitHub
+</Card>
