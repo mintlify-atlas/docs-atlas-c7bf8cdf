@@ -1,0 +1,122 @@
+---
+title: 'Get API Key'
+api: 'GET /v1/api-keys/{id}'
+description: 'Retrieve a specific API key by ID'
+---
+
+## Overview
+
+Retrieve detailed information about a specific API key, including its decrypted value and usage metadata.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique UUID identifier of the API key
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the API key
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  UUID of the organization this key belongs to
+</ResponseField>
+
+<ResponseField name="decrypted_key" type="string" required>
+  The actual API key value (encrypted in storage, decrypted in response)
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the key was created (ISO 8601)
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  When the key was last modified (ISO 8601)
+</ResponseField>
+
+<ResponseField name="expiration_date" type="string" required>
+  When the key will expire (ISO 8601)
+</ResponseField>
+
+<ResponseField name="last_used_date" type="string">
+  When the key was last used for API requests (ISO 8601). `null` if never used.
+</ResponseField>
+
+<ResponseField name="created_by_email" type="string">
+  Email address of the user who created the key
+</ResponseField>
+
+<ResponseField name="modified_by_email" type="string">
+  Email address of the user who last modified the key
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/api-keys/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+key_id = "550e8400-e29b-41d4-a716-446655440000"
+url = f"https://api.airweave.ai/v1/api-keys/{key_id}"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.get(url, headers=headers)
+api_key = response.json()
+
+print(f"Key: {api_key['decrypted_key']}")
+print(f"Expires: {api_key['expiration_date']}")
+print(f"Last used: {api_key['last_used_date']}")
+```
+
+```typescript TypeScript
+const keyId = '550e8400-e29b-41d4-a716-446655440000';
+const url = `https://api.airweave.ai/v1/api-keys/${keyId}`;
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const apiKey = await response.json();
+
+console.log(`Key: ${apiKey.decrypted_key}`);
+console.log(`Expires: ${apiKey.expiration_date}`);
+console.log(`Last used: ${apiKey.last_used_date}`);
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "770e8400-e29b-41d4-a716-446655440001",
+  "decrypted_key": "awv_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+  "created_at": "2024-03-15T10:00:00Z",
+  "modified_at": "2024-03-15T10:00:00Z",
+  "expiration_date": "2024-06-13T10:00:00Z",
+  "last_used_date": "2024-03-20T14:30:00Z",
+  "created_by_email": "user@company.com",
+  "modified_by_email": "user@company.com"
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  API key with the specified ID does not exist or does not belong to your organization
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication
+</ResponseField>

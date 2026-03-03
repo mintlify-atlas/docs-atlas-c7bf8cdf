@@ -1,0 +1,147 @@
+---
+title: 'List API Keys'
+api: 'GET /v1/api-keys'
+description: 'Retrieve all API keys for your organization'
+---
+
+## Overview
+
+Retrieve all API keys for the authenticated organization. Returns keys with their metadata including expiration dates and usage information.
+
+**Note**: The actual key values are returned decrypted, but should be treated as sensitive data.
+
+## Query Parameters
+
+<ParamField query="skip" type="integer" default={0}>
+  Number of keys to skip for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default={100}>
+  Maximum number of keys to return (1-100)
+</ParamField>
+
+## Response
+
+Returns an array of API key objects.
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the API key
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  UUID of the organization this key belongs to
+</ResponseField>
+
+<ResponseField name="decrypted_key" type="string" required>
+  The actual API key value (encrypted in storage, decrypted in response)
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the key was created (ISO 8601)
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  When the key was last modified (ISO 8601)
+</ResponseField>
+
+<ResponseField name="expiration_date" type="string" required>
+  When the key will expire (ISO 8601)
+</ResponseField>
+
+<ResponseField name="last_used_date" type="string">
+  When the key was last used for API requests (ISO 8601). `null` if never used.
+</ResponseField>
+
+<ResponseField name="created_by_email" type="string">
+  Email address of the user who created the key
+</ResponseField>
+
+<ResponseField name="modified_by_email" type="string">
+  Email address of the user who last modified the key
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl "https://api.airweave.ai/v1/api-keys?limit=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+from datetime import datetime
+
+url = "https://api.airweave.ai/v1/api-keys"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+params = {"limit": 10}
+
+response = requests.get(url, headers=headers, params=params)
+api_keys = response.json()
+
+for key in api_keys:
+    expiration = datetime.fromisoformat(key['expiration_date'].replace('Z', '+00:00'))
+    status = "expired" if expiration < datetime.now(expiration.tzinfo) else "active"
+    print(f"Key {key['id'][:8]}...: {status}, expires {key['expiration_date']}")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/api-keys?limit=10';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, { headers });
+const apiKeys = await response.json();
+
+apiKeys.forEach(key => {
+  const expiration = new Date(key.expiration_date);
+  const status = expiration < new Date() ? 'expired' : 'active';
+  console.log(`Key ${key.id.slice(0, 8)}...: ${status}, expires ${key.expiration_date}`);
+});
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "organization_id": "770e8400-e29b-41d4-a716-446655440001",
+    "decrypted_key": "awv_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "created_at": "2024-03-15T10:00:00Z",
+    "modified_at": "2024-03-15T10:00:00Z",
+    "expiration_date": "2024-06-13T10:00:00Z",
+    "last_used_date": "2024-03-20T14:30:00Z",
+    "created_by_email": "user@company.com",
+    "modified_by_email": "user@company.com"
+  },
+  {
+    "id": "660e8400-e29b-41d4-a716-446655440002",
+    "organization_id": "770e8400-e29b-41d4-a716-446655440001",
+    "decrypted_key": "awv_live_x9y8z7w6v5u4t3s2r1q0p9o8n7m6l5k4",
+    "created_at": "2024-01-10T08:00:00Z",
+    "modified_at": "2024-01-10T08:00:00Z",
+    "expiration_date": "2024-04-09T08:00:00Z",
+    "last_used_date": null,
+    "created_by_email": "admin@company.com",
+    "modified_by_email": "admin@company.com"
+  }
+]
+```
+
+## Use Cases
+
+- **Audit key usage**: Check `last_used_date` to identify inactive keys
+- **Monitor expiration**: Find keys approaching expiration
+- **Key management**: List all keys before rotation or cleanup
+- **Security review**: Identify keys that should be deleted
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication
+</ResponseField>

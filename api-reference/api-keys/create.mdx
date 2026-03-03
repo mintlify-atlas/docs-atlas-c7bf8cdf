@@ -1,0 +1,156 @@
+---
+title: 'Create API Key'
+api: 'POST /v1/api-keys'
+description: 'Create a new API key for authentication'
+---
+
+## Overview
+
+Create a new API key for the authenticated user. The key is returned only once in the response - store it securely.
+
+**Security:**
+- API keys are encrypted before storage
+- Keys expire after 90 days by default (configurable up to 365 days)
+- Track last usage and expiration dates
+- Audit logs record all key creation events
+
+## Request Body
+
+<ParamField body="expiration_days" type="integer" default={90}>
+  Number of days until the API key expires
+  
+  - Minimum: 1 day
+  - Maximum: 365 days
+  - Default: 90 days
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique UUID identifier of the API key
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  UUID of the organization this key belongs to
+</ResponseField>
+
+<ResponseField name="decrypted_key" type="string" required>
+  The actual API key value. **Only returned once during creation.** Store this securely.
+  
+  Use this key in the `Authorization: Bearer <key>` header for API requests.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the key was created (ISO 8601)
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  When the key was last modified (ISO 8601)
+</ResponseField>
+
+<ResponseField name="expiration_date" type="string" required>
+  When the key will expire (ISO 8601)
+</ResponseField>
+
+<ResponseField name="last_used_date" type="string">
+  When the key was last used (ISO 8601). `null` for newly created keys.
+</ResponseField>
+
+<ResponseField name="created_by_email" type="string">
+  Email address of the user who created the key
+</ResponseField>
+
+<ResponseField name="modified_by_email" type="string">
+  Email address of the user who last modified the key
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/api-keys \
+  -H "Authorization: Bearer YOUR_CURRENT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "expiration_days": 90
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/api-keys"
+headers = {
+    "Authorization": "Bearer YOUR_CURRENT_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "expiration_days": 90
+}
+
+response = requests.post(url, headers=headers, json=data)
+api_key = response.json()
+
+# Store the key securely - it won't be shown again!
+print(f"New API key: {api_key['decrypted_key']}")
+print(f"Expires: {api_key['expiration_date']}")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/api-keys';
+const headers = {
+  'Authorization': 'Bearer YOUR_CURRENT_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  expiration_days: 90
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+const apiKey = await response.json();
+
+// Store the key securely - it won't be shown again!
+console.log(`New API key: ${apiKey.decrypted_key}`);
+console.log(`Expires: ${apiKey.expiration_date}`);
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "organization_id": "770e8400-e29b-41d4-a716-446655440001",
+  "decrypted_key": "awv_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+  "created_at": "2024-03-15T10:00:00Z",
+  "modified_at": "2024-03-15T10:00:00Z",
+  "expiration_date": "2024-06-13T10:00:00Z",
+  "last_used_date": null,
+  "created_by_email": "user@company.com",
+  "modified_by_email": "user@company.com"
+}
+```
+
+## Best Practices
+
+- **Store keys securely**: Never commit API keys to version control
+- **Rotate regularly**: Use the rotate endpoint to refresh keys before expiration
+- **Monitor usage**: Check `last_used_date` to identify unused keys
+- **Delete unused keys**: Remove keys that are no longer needed
+- **Set appropriate expiration**: Use shorter expiration periods for production keys
+
+## Error Responses
+
+<ResponseField name="400 Bad Request">
+  Invalid expiration_days value (must be 1-365)
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication
+</ResponseField>

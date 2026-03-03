@@ -96,6 +96,16 @@
             ]
           },
           {
+            "group": "API Keys",
+            "pages": [
+              "api-reference/api-keys/create",
+              "api-reference/api-keys/list",
+              "api-reference/api-keys/get",
+              "api-reference/api-keys/rotate",
+              "api-reference/api-keys/delete"
+            ]
+          },
+          {
             "group": "Collections",
             "pages": [
               "api-reference/collections/list",
@@ -103,7 +113,9 @@
               "api-reference/collections/create",
               "api-reference/collections/update",
               "api-reference/collections/delete",
-              "api-reference/collections/search"
+              "api-reference/collections/search",
+              "api-reference/collections/agentic-search",
+              "api-reference/collections/agentic-search-stream"
             ]
           },
           {
@@ -116,6 +128,15 @@
               "api-reference/source-connections/delete",
               "api-reference/source-connections/run",
               "api-reference/source-connections/jobs"
+            ]
+          },
+          {
+            "group": "Sync",
+            "pages": [
+              "api-reference/sync/list-jobs",
+              "api-reference/sync/get-job",
+              "api-reference/sync/cancel-job",
+              "api-reference/sync/stream-logs"
             ]
           },
           {
@@ -137,6 +158,12 @@
             "pages": [
               "api-reference/entities/list",
               "api-reference/entities/get"
+            ]
+          },
+          {
+            "group": "Health",
+            "pages": [
+              "api-reference/health"
             ]
           }
         ]

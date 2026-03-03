@@ -1,0 +1,211 @@
+---
+title: 'Health Check'
+api: 'GET /v1/health'
+description: 'Check API health and service status'
+---
+
+## Overview
+
+Health check endpoints for monitoring API availability and dependency status.
+
+**Endpoints:**
+- `GET /v1/health` - Basic health check
+- `GET /v1/health/live` - Liveness probe (process running)
+- `GET /v1/health/ready` - Readiness probe (dependencies healthy)
+
+## Basic Health Check
+
+### GET /v1/health
+
+Simple health check that returns immediately if the API is running.
+
+**Response:**
+```json
+{
+  "status": "healthy"
+}
+```
+
+## Liveness Probe
+
+### GET /v1/health/live
+
+Kubernetes liveness probe - confirms the process is running and responsive.
+
+**Use Case:** Restart container if process is hung or crashed
+
+**Response:**
+```json
+{
+  "status": "alive"
+}
+```
+
+## Readiness Probe
+
+### GET /v1/health/ready
+
+Kubernetes readiness probe - checks critical dependencies before routing traffic.
+
+**Dependencies Checked:**
+- **Postgres** (critical): Database connectivity and query performance
+- **Redis** (informational): Cache and pub/sub availability  
+- **Temporal** (informational): Workflow engine status
+
+**Status Codes:**
+- `200 OK`: All critical dependencies healthy (ready for traffic)
+- `503 Service Unavailable`: Critical dependencies unhealthy (not ready)
+
+**Response Fields:**
+
+<ResponseField name="status" type="string" required>
+  Overall readiness status: `ready` or `not_ready`
+</ResponseField>
+
+<ResponseField name="checks" type="object" required>
+  Individual dependency health checks
+  
+  <Expandable title="check structure">
+    Each dependency has:
+    - `status`: `up`, `down`, or `skipped`
+    - `latency_ms`: Response time in milliseconds (null if down/skipped)
+    - `error`: Error message if check failed (null if successful)
+  </Expandable>
+</ResponseField>
+
+## Example Requests
+
+<CodeGroup>
+
+```bash cURL - Basic Health
+curl https://api.airweave.ai/v1/health
+```
+
+```bash cURL - Readiness
+curl https://api.airweave.ai/v1/health/ready
+```
+
+```python Python
+import requests
+
+# Basic health check
+response = requests.get("https://api.airweave.ai/v1/health")
+print(f"Status: {response.json()['status']}")
+
+# Readiness probe
+response = requests.get("https://api.airweave.ai/v1/health/ready")
+health = response.json()
+
+print(f"Overall: {health['status']}")
+for service, check in health['checks'].items():
+    print(f"  {service}: {check['status']} ({check['latency_ms']}ms)")
+    if check['error']:
+        print(f"    Error: {check['error']}")
+```
+
+```typescript TypeScript
+// Basic health check
+const response = await fetch('https://api.airweave.ai/v1/health');
+const health = await response.json();
+console.log(`Status: ${health.status}`);
+
+// Readiness probe
+const readyResponse = await fetch('https://api.airweave.ai/v1/health/ready');
+const ready = await readyResponse.json();
+
+console.log(`Overall: ${ready.status}`);
+for (const [service, check] of Object.entries(ready.checks)) {
+  console.log(`  ${service}: ${check.status} (${check.latency_ms}ms)`);
+  if (check.error) {
+    console.log(`    Error: ${check.error}`);
+  }
+}
+```
+
+</CodeGroup>
+
+## Example Responses
+
+### Healthy System
+
+```json
+{
+  "status": "ready",
+  "checks": {
+    "postgres": {
+      "status": "up",
+      "latency_ms": 1.23,
+      "error": null
+    },
+    "redis": {
+      "status": "up",
+      "latency_ms": 0.45,
+      "error": null
+    },
+    "temporal": {
+      "status": "up",
+      "latency_ms": 2.1,
+      "error": null
+    }
+  }
+}
+```
+
+### Unhealthy System
+
+```json
+{
+  "status": "not_ready",
+  "checks": {
+    "postgres": {
+      "status": "down",
+      "latency_ms": null,
+      "error": "Connection refused"
+    },
+    "redis": {
+      "status": "up",
+      "latency_ms": 0.52,
+      "error": null
+    },
+    "temporal": {
+      "status": "skipped",
+      "latency_ms": null,
+      "error": null
+    }
+  }
+}
+```
+
+## Kubernetes Configuration
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /v1/health/live
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /v1/health/ready
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+```
+
+## Debug Mode
+
+When `DEBUG=true` in settings, the readiness endpoint includes additional diagnostic information.
+
+## Monitoring
+
+Use these endpoints for:
+- **Kubernetes health probes**: Automatic container restart and traffic routing
+- **Load balancer health checks**: Remove unhealthy instances from pool
+- **Uptime monitoring**: Track API availability over time
+- **Dependency monitoring**: Alert on database or cache issues

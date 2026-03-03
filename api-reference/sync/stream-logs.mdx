@@ -1,0 +1,195 @@
+---
+title: 'Stream Sync Job Logs'
+api: 'GET /v1/sync/job/{job_id}/subscribe'
+description: 'Subscribe to real-time sync job progress via Server-Sent Events'
+---
+
+## Overview
+
+Stream real-time progress updates for a sync job using Server-Sent Events (SSE). This endpoint provides live updates as the sync processes entities.
+
+**Features:**
+- Real-time progress updates as entities are processed
+- Automatic heartbeat every 30 seconds to keep connection alive
+- Connection status events
+- Graceful error handling
+
+**Use Cases:**
+- Build real-time sync progress UIs
+- Monitor long-running sync operations
+- Debug sync issues with live feedback
+- Track entity processing in real-time
+
+## Path Parameters
+
+<ParamField path="job_id" type="string" required>
+  Unique UUID identifier of the sync job to monitor
+  
+  Example: "770e8400-e29b-41d4-a716-446655440002"
+</ParamField>
+
+## Response
+
+Returns a Server-Sent Events (SSE) stream with `text/event-stream` content type.
+
+### Event Types
+
+<ResponseField name="connected" type="event">
+  Initial connection confirmation event
+  
+  <Expandable title="payload">
+    ```json
+    {
+      "type": "connected",
+      "job_id": "770e8400-e29b-41d4-a716-446655440002"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="heartbeat" type="event">
+  Periodic heartbeat to keep connection alive (every 30 seconds)
+  
+  <Expandable title="payload">
+    ```json
+    {
+      "type": "heartbeat"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="event">
+  Sync progress update with entity processing statistics
+  
+  <Expandable title="payload example">
+    ```json
+    {
+      "type": "progress",
+      "job_id": "770e8400-e29b-41d4-a716-446655440002",
+      "entities_inserted": 45,
+      "entities_updated": 12,
+      "entities_deleted": 3,
+      "status": "in_progress"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="event">
+  Error event if something goes wrong
+  
+  <Expandable title="payload">
+    ```json
+    {
+      "type": "error",
+      "message": "Error description"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -N https://api.airweave.ai/v1/sync/job/770e8400-e29b-41d4-a716-446655440002/subscribe \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Accept: text/event-stream"
+```
+
+```python Python
+import requests
+import json
+
+job_id = "770e8400-e29b-41d4-a716-446655440002"
+url = f"https://api.airweave.ai/v1/sync/job/{job_id}/subscribe"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Accept": "text/event-stream"
+}
+
+with requests.get(url, headers=headers, stream=True) as response:
+    for line in response.iter_lines():
+        if line:
+            decoded_line = line.decode('utf-8')
+            if decoded_line.startswith('data: '):
+                data = json.loads(decoded_line[6:])
+                print(f"Event: {data['type']}")
+                
+                if data['type'] == 'progress':
+                    print(f"  Inserted: {data['entities_inserted']}")
+                    print(f"  Updated: {data['entities_updated']}")
+                elif data['type'] == 'error':
+                    print(f"  Error: {data['message']}")
+                    break
+```
+
+```typescript TypeScript
+const jobId = '770e8400-e29b-41d4-a716-446655440002';
+const url = `https://api.airweave.ai/v1/sync/job/${jobId}/subscribe`;
+
+const eventSource = new EventSource(url, {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log(`Event: ${data.type}`);
+  
+  if (data.type === 'progress') {
+    console.log(`  Inserted: ${data.entities_inserted}`);
+    console.log(`  Updated: ${data.entities_updated}`);
+  } else if (data.type === 'error') {
+    console.log(`  Error: ${data.message}`);
+    eventSource.close();
+  }
+};
+
+eventSource.onerror = (error) => {
+  console.error('SSE error:', error);
+  eventSource.close();
+};
+```
+
+</CodeGroup>
+
+## Example Event Stream
+
+```
+data: {"type": "connected", "job_id": "770e8400-e29b-41d4-a716-446655440002"}
+
+data: {"type": "progress", "job_id": "770e8400-e29b-41d4-a716-446655440002", "entities_inserted": 10, "entities_updated": 2, "status": "in_progress"}
+
+data: {"type": "heartbeat"}
+
+data: {"type": "progress", "job_id": "770e8400-e29b-41d4-a716-446655440002", "entities_inserted": 45, "entities_updated": 12, "status": "completed"}
+```
+
+## Connection Management
+
+- **Heartbeat**: Events are sent every 30 seconds to prevent connection timeout
+- **Auto-reconnect**: Clients should implement reconnection logic for dropped connections
+- **Graceful closure**: Connection closes automatically when sync completes or fails
+- **Error handling**: Error events are sent before closing on exceptions
+
+## Headers
+
+The response includes these headers:
+- `Content-Type: text/event-stream`
+- `Cache-Control: no-cache, no-transform`
+- `Connection: keep-alive`
+- `X-Accel-Buffering: no` (disables Nginx buffering)
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Sync job with the specified ID does not exist
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication
+</ResponseField>

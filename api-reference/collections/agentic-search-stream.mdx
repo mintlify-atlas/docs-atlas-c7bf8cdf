@@ -1,0 +1,269 @@
+---
+title: 'Agentic Search Stream'
+api: 'POST /v1/collections/{readable_id}/agentic-search/stream'
+description: 'Stream real-time agentic search progress via Server-Sent Events'
+---
+
+## Overview
+
+Stream agentic search progress in real-time using Server-Sent Events (SSE). This endpoint provides live updates as the agent plans, searches, and evaluates results.
+
+**Event Stream:**
+- Planning reasoning and strategy
+- Search execution with statistics  
+- Evaluator assessments of result quality
+- Final results and answer
+
+**Benefits:**
+- Build interactive search UIs with live feedback
+- Monitor agent decision-making process
+- Track search progress for long-running queries
+- Debug search strategies
+
+## Path Parameters
+
+<ParamField path="readable_id" type="string" required>
+  The unique readable identifier of the collection to search
+  
+  Example: "customer-docs-x7k9m"
+</ParamField>
+
+## Request Body
+
+<ParamField body="query" type="string" required>
+  The natural language search query
+</ParamField>
+
+<ParamField body="mode" type="string" default="thinking">
+  Search execution mode: `thinking` or `fast`
+</ParamField>
+
+<ParamField body="filter" type="array" default={[]}>
+  Filter groups applied to search results
+</ParamField>
+
+<ParamField body="limit" type="integer">
+  Maximum number of results to return
+</ParamField>
+
+## Response
+
+Returns a Server-Sent Events (SSE) stream with `text/event-stream` content type.
+
+### Event Types
+
+<ResponseField name="planning" type="event">
+  Agent's reasoning and search strategy
+  
+  <Expandable title="payload example">
+    ```json
+    {
+      "type": "planning",
+      "reasoning": "The query asks about authentication best practices. I'll search for security documentation and API key management guides.",
+      "strategy": "hybrid_search_with_filters"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="search" type="event">
+  Search execution with result counts
+  
+  <Expandable title="payload example">
+    ```json
+    {
+      "type": "search",
+      "query": "authentication best practices",
+      "results_found": 45,
+      "filters_applied": true
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="evaluation" type="event">
+  Evaluator's assessment of result quality
+  
+  <Expandable title="payload example">
+    ```json
+    {
+      "type": "evaluation",
+      "quality_score": 0.92,
+      "needs_refinement": false,
+      "reasoning": "Results contain comprehensive authentication documentation"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="done" type="event">
+  Final results and answer
+  
+  <Expandable title="payload example">
+    ```json
+    {
+      "type": "done",
+      "results": [...],
+      "answer": {
+        "text": "Based on the documentation...",
+        "citations": [{"entity_id": "abc123"}]
+      }
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="event">
+  Error event if something goes wrong
+  
+  <Expandable title="payload example">
+    ```json
+    {
+      "type": "error",
+      "message": "Search service unavailable"
+    }
+    ```
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -N -X POST https://api.airweave.ai/v1/collections/customer-docs-x7k9m/agentic-search/stream \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "query": "What are the authentication best practices?",
+    "mode": "thinking"
+  }'
+```
+
+```python Python
+import requests
+import json
+
+url = "https://api.airweave.ai/v1/collections/customer-docs-x7k9m/agentic-search/stream"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json",
+    "Accept": "text/event-stream"
+}
+data = {
+    "query": "What are the authentication best practices?",
+    "mode": "thinking"
+}
+
+with requests.post(url, headers=headers, json=data, stream=True) as response:
+    for line in response.iter_lines():
+        if line:
+            decoded_line = line.decode('utf-8')
+            if decoded_line.startswith('data: '):
+                event = json.loads(decoded_line[6:])
+                print(f"Event: {event['type']}")
+                
+                if event['type'] == 'planning':
+                    print(f"  Strategy: {event['strategy']}")
+                elif event['type'] == 'search':
+                    print(f"  Found: {event['results_found']} results")
+                elif event['type'] == 'done':
+                    print(f"  Answer: {event['answer']['text'][:100]}...")
+                    break
+                elif event['type'] == 'error':
+                    print(f"  Error: {event['message']}")
+                    break
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/collections/customer-docs-x7k9m/agentic-search/stream';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  query: 'What are the authentication best practices?',
+  mode: 'thinking'
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+
+const reader = response.body?.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader!.read();
+  if (done) break;
+  
+  const chunk = decoder.decode(value);
+  const lines = chunk.split('\n');
+  
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const event = JSON.parse(line.slice(6));
+      console.log(`Event: ${event.type}`);
+      
+      if (event.type === 'planning') {
+        console.log(`  Strategy: ${event.strategy}`);
+      } else if (event.type === 'search') {
+        console.log(`  Found: ${event.results_found} results`);
+      } else if (event.type === 'done') {
+        console.log(`  Answer: ${event.answer.text.slice(0, 100)}...`);
+        break;
+      }
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+## Example Event Stream
+
+```
+data: {"type": "planning", "reasoning": "Query asks about authentication best practices", "strategy": "hybrid_search"}
+
+data: {"type": "search", "query": "authentication best practices", "results_found": 45}
+
+data: {"type": "evaluation", "quality_score": 0.92, "needs_refinement": false}
+
+data: {"type": "done", "results": [...], "answer": {"text": "Based on the documentation...", "citations": [...]}}
+```
+
+## Connection Management
+
+- **Auto-close**: Connection closes when search completes or encounters an error
+- **Error handling**: Errors are sent as events before closing
+- **Buffering disabled**: `X-Accel-Buffering: no` header disables proxy buffering
+
+## Headers
+
+The response includes:
+- `Content-Type: text/event-stream`
+- `Cache-Control: no-cache, no-transform`
+- `Connection: keep-alive`
+- `X-Accel-Buffering: no`
+- `Access-Control-Allow-Origin: *`
+
+## Error Responses
+
+<ResponseField name="403 Forbidden">
+  AGENTIC_SEARCH feature not enabled for this organization
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  Collection with the specified readable_id does not exist
+</ResponseField>
+
+<ResponseField name="422 Validation Error">
+  Invalid query (empty or invalid parameters)
+</ResponseField>
+
+<ResponseField name="429 Too Many Requests">
+  Query limit exceeded for your organization
+</ResponseField>

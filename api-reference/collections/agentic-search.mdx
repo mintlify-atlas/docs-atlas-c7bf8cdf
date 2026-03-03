@@ -1,0 +1,275 @@
+---
+title: 'Agentic Search'
+api: 'POST /v1/collections/{readable_id}/agentic-search'
+description: 'Perform intelligent multi-step search with AI reasoning'
+---
+
+## Overview
+
+Perform agentic search - an intelligent search system that plans, executes, and evaluates search strategies to find the best results for complex queries.
+
+**How it works:**
+1. **Planning**: AI analyzes the query and creates a search strategy
+2. **Searching**: Executes searches with filters and refinements
+3. **Evaluation**: Assesses result quality and decides whether to continue
+4. **Answer Generation**: Synthesizes findings into a comprehensive answer
+
+**Search Modes:**
+- **thinking** (default): Multi-step intelligent search for complex queries
+- **fast**: Single-pass search for simple lookups
+
+**Feature Requirements:**
+- Requires `AGENTIC_SEARCH` feature flag for your organization
+- Usage is tracked and subject to query limits
+
+## Path Parameters
+
+<ParamField path="readable_id" type="string" required>
+  The unique readable identifier of the collection to search
+  
+  Example: "customer-docs-x7k9m"
+</ParamField>
+
+## Request Body
+
+<ParamField body="query" type="string" required>
+  The natural language search query
+  
+  Example: "What are the best practices for API key rotation?"
+</ParamField>
+
+<ParamField body="mode" type="string" default="thinking">
+  Search execution mode:
+  - `thinking`: Intelligent multi-step search (may take longer, better results)
+  - `fast`: Single search pass (faster, simpler queries)
+</ParamField>
+
+<ParamField body="filter" type="array" default={[]}>
+  Filter groups always applied to search results. Conditions within a group are combined with AND. Multiple groups are combined with OR.
+  
+  <Expandable title="filter structure">
+    ```json
+    [
+      {
+        "conditions": [
+          {
+            "field": "source_name",
+            "operator": "equals",
+            "value": "GitHub"
+          }
+        ]
+      }
+    ]
+    ```
+  </Expandable>
+</ParamField>
+
+<ParamField body="limit" type="integer">
+  Maximum number of results to return. The agent may return fewer results based on quality assessment.
+  
+  Minimum: 1
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array" required>
+  Array of search results ordered by relevance
+  
+  <Expandable title="result properties">
+    <ResponseField name="entity_id" type="string">
+      Original entity identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Entity display name
+    </ResponseField>
+    
+    <ResponseField name="relevance_score" type="number">
+      Relevance score from search engine (0-1)
+    </ResponseField>
+    
+    <ResponseField name="textual_representation" type="string">
+      Semantically searchable text content
+    </ResponseField>
+    
+    <ResponseField name="breadcrumbs" type="array">
+      Hierarchical path showing entity context
+    </ResponseField>
+    
+    <ResponseField name="web_url" type="string">
+      URL to view the entity in its source application
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      When the entity was created (ISO 8601)
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string">
+      When the entity was last updated (ISO 8601)
+    </ResponseField>
+    
+    <ResponseField name="airweave_system_metadata" type="object">
+      System metadata (source name, entity type, sync IDs, chunk index)
+    </ResponseField>
+    
+    <ResponseField name="access" type="object">
+      Access control information (viewers, is_public)
+    </ResponseField>
+    
+    <ResponseField name="raw_source_fields" type="object">
+      All source-specific metadata fields
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="answer" type="object" required>
+  AI-generated answer based on search results
+  
+  <Expandable title="answer properties">
+    <ResponseField name="text" type="string">
+      The answer text, clear and well-structured
+    </ResponseField>
+    
+    <ResponseField name="citations" type="array">
+      List of entity_ids from search results used to compose the answer
+      
+      Each citation has:
+      - `entity_id`: The entity ID of a result used in the answer
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/collections/customer-docs-x7k9m/agentic-search \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What are the authentication best practices?",
+    "mode": "thinking",
+    "limit": 10
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.airweave.ai/v1/collections/customer-docs-x7k9m/agentic-search"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "query": "What are the authentication best practices?",
+    "mode": "thinking",
+    "limit": 10
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+print(f"Answer: {result['answer']['text']}")
+print(f"\nFound {len(result['results'])} results:")
+for r in result['results'][:3]:
+    print(f"  - {r['name']} (score: {r['relevance_score']:.3f})")
+```
+
+```typescript TypeScript
+const url = 'https://api.airweave.ai/v1/collections/customer-docs-x7k9m/agentic-search';
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+const data = {
+  query: 'What are the authentication best practices?',
+  mode: 'thinking',
+  limit: 10
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(data)
+});
+const result = await response.json();
+
+console.log(`Answer: ${result.answer.text}`);
+console.log(`\nFound ${result.results.length} results:`);
+result.results.slice(0, 3).forEach(r => {
+  console.log(`  - ${r.name} (score: ${r.relevance_score.toFixed(3)})`);
+});
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "results": [
+    {
+      "entity_id": "abc123-def456",
+      "name": "Authentication Best Practices",
+      "relevance_score": 0.95,
+      "textual_representation": "# Authentication Best Practices\n\n1. Use API keys with appropriate expiration...\n2. Rotate keys regularly...",
+      "breadcrumbs": [
+        {"entity_id": "docs-root", "name": "Documentation", "entity_type": "FolderEntity"},
+        {"entity_id": "security", "name": "Security", "entity_type": "FolderEntity"}
+      ],
+      "web_url": "https://github.com/company/docs/blob/main/security/auth.md",
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-03-10T14:30:00Z",
+      "airweave_system_metadata": {
+        "source_name": "GitHub",
+        "entity_type": "GitHubFileEntity",
+        "sync_id": "sync-123",
+        "sync_job_id": "job-456",
+        "chunk_index": 0,
+        "original_entity_id": "file-789"
+      },
+      "access": {
+        "viewers": null,
+        "is_public": true
+      },
+      "raw_source_fields": {
+        "path": "security/auth.md",
+        "repo": "company/docs"
+      }
+    }
+  ],
+  "answer": {
+    "text": "Based on the documentation, here are the key authentication best practices:\n\n1. **API Key Management**: Use API keys with appropriate expiration periods (90-365 days) and rotate them regularly before expiration.\n\n2. **Secure Storage**: Never commit API keys to version control. Store them in secure key management systems.\n\n3. **Regular Rotation**: Implement a key rotation schedule using the rotate endpoint to refresh keys proactively.",
+    "citations": [
+      {"entity_id": "abc123-def456"},
+      {"entity_id": "xyz789-ghi012"}
+    ]
+  }
+}
+```
+
+## Performance
+
+- **Fast mode**: Typically 1-3 seconds
+- **Thinking mode**: Typically 5-15 seconds (depends on query complexity)
+- Use `fast` mode for simple lookups, `thinking` mode for complex questions
+
+## Error Responses
+
+<ResponseField name="403 Forbidden">
+  AGENTIC_SEARCH feature not enabled for this organization
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  Collection with the specified readable_id does not exist
+</ResponseField>
+
+<ResponseField name="422 Validation Error">
+  Invalid query (empty or invalid parameters)
+</ResponseField>
+
+<ResponseField name="429 Too Many Requests">
+  Query limit exceeded for your organization
+</ResponseField>

@@ -1,0 +1,110 @@
+---
+title: 'Cancel Sync Job'
+api: 'POST /v1/sync/jobs/{job_id}/cancel'
+description: 'Cancel a running or pending sync job'
+---
+
+## Overview
+
+Cancel a sync job that is currently running or pending. The job will be gracefully stopped and marked as cancelled.
+
+**Cancellation Behavior:**
+- Jobs in `pending` or `in_progress` status can be cancelled
+- Cancellation is graceful - the current operation completes before stopping
+- Partial data may be committed depending on when cancellation occurs
+- Status transitions: `in_progress` → `cancelling` → `cancelled`
+
+**Note**: This endpoint is not yet implemented in the current codebase. The endpoint structure is defined but the cancel operation needs to be added to the sync service.
+
+## Path Parameters
+
+<ParamField path="job_id" type="string" required>
+  Unique UUID identifier of the sync job to cancel
+  
+  Example: "770e8400-e29b-41d4-a716-446655440002"
+</ParamField>
+
+## Response
+
+Returns the updated sync job object with `cancelling` or `cancelled` status.
+
+<ResponseField name="id" type="string" required>
+  UUID of the sync job
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Updated job status: `cancelling` or `cancelled`
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  Updated timestamp when cancellation was requested (ISO 8601)
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/sync/jobs/770e8400-e29b-41d4-a716-446655440002/cancel \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+job_id = "770e8400-e29b-41d4-a716-446655440002"
+url = f"https://api.airweave.ai/v1/sync/jobs/{job_id}/cancel"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.post(url, headers=headers)
+job = response.json()
+
+print(f"Job {job['id']} status: {job['status']}")
+```
+
+```typescript TypeScript
+const jobId = '770e8400-e29b-41d4-a716-446655440002';
+const url = `https://api.airweave.ai/v1/sync/jobs/${jobId}/cancel`;
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers
+});
+const job = await response.json();
+
+console.log(`Job ${job.id} status: ${job.status}`);
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "770e8400-e29b-41d4-a716-446655440002",
+  "sync_id": "660e8400-e29b-41d4-a716-446655440001",
+  "status": "cancelling",
+  "modified_at": "2024-03-20T10:03:15Z"
+}
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  Sync job with the specified ID does not exist or does not belong to your organization
+</ResponseField>
+
+<ResponseField name="400 Bad Request">
+  Job cannot be cancelled (already completed, failed, or cancelled)
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication
+</ResponseField>
+
+<ResponseField name="501 Not Implemented">
+  Cancel functionality is not yet implemented
+</ResponseField>

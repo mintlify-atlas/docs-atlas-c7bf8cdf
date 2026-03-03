@@ -1,0 +1,150 @@
+---
+title: 'Rotate API Key'
+api: 'POST /v1/api-keys/{id}/rotate'
+description: 'Create a new API key to replace an existing one'
+---
+
+## Overview
+
+Rotate an API key by creating a new one with a fresh 90-day expiration. This is the recommended way to refresh keys before they expire.
+
+**Rotation Behavior:**
+- Creates a new API key with default 90-day expiration
+- The old key remains active until its original expiration date
+- Both keys can be used during the transition period
+- Delete the old key manually when migration is complete
+
+**Use Cases:**
+- Refresh keys approaching expiration
+- Rotate keys as part of security policies
+- Replace potentially compromised keys
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the API key to rotate
+  
+  Example: "550e8400-e29b-41d4-a716-446655440000"
+</ParamField>
+
+## Response
+
+Returns the newly created API key.
+
+<ResponseField name="id" type="string" required>
+  UUID of the new API key (different from the old key)
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  UUID of the organization
+</ResponseField>
+
+<ResponseField name="decrypted_key" type="string" required>
+  The new API key value. **Store this securely** - it won't be shown again.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the new key was created (ISO 8601)
+</ResponseField>
+
+<ResponseField name="modified_at" type="string" required>
+  When the new key was last modified (ISO 8601)
+</ResponseField>
+
+<ResponseField name="expiration_date" type="string" required>
+  When the new key will expire - 90 days from creation (ISO 8601)
+</ResponseField>
+
+<ResponseField name="last_used_date" type="string">
+  Always `null` for newly created keys
+</ResponseField>
+
+<ResponseField name="created_by_email" type="string">
+  Email address of the user who rotated the key
+</ResponseField>
+
+<ResponseField name="modified_by_email" type="string">
+  Email address of the user who rotated the key
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.airweave.ai/v1/api-keys/550e8400-e29b-41d4-a716-446655440000/rotate \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+old_key_id = "550e8400-e29b-41d4-a716-446655440000"
+url = f"https://api.airweave.ai/v1/api-keys/{old_key_id}/rotate"
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+response = requests.post(url, headers=headers)
+new_key = response.json()
+
+print(f"New key ID: {new_key['id']}")
+print(f"New key value: {new_key['decrypted_key']}")
+print(f"Expires: {new_key['expiration_date']}")
+print("\nUpdate your applications to use the new key.")
+print(f"Delete old key {old_key_id} when migration is complete.")
+```
+
+```typescript TypeScript
+const oldKeyId = '550e8400-e29b-41d4-a716-446655440000';
+const url = `https://api.airweave.ai/v1/api-keys/${oldKeyId}/rotate`;
+const headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+};
+
+const response = await fetch(url, {
+  method: 'POST',
+  headers: headers
+});
+const newKey = await response.json();
+
+console.log(`New key ID: ${newKey.id}`);
+console.log(`New key value: ${newKey.decrypted_key}`);
+console.log(`Expires: ${newKey.expiration_date}`);
+console.log('\nUpdate your applications to use the new key.');
+console.log(`Delete old key ${oldKeyId} when migration is complete.`);
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "id": "880e8400-e29b-41d4-a716-446655440003",
+  "organization_id": "770e8400-e29b-41d4-a716-446655440001",
+  "decrypted_key": "awv_live_n3w4k5y6v7a8l9u0e1x2y3z4a5b6c7d8",
+  "created_at": "2024-03-20T15:00:00Z",
+  "modified_at": "2024-03-20T15:00:00Z",
+  "expiration_date": "2024-06-18T15:00:00Z",
+  "last_used_date": null,
+  "created_by_email": "user@company.com",
+  "modified_by_email": "user@company.com"
+}
+```
+
+## Rotation Workflow
+
+1. **Call rotate endpoint**: Creates new key with 90-day expiration
+2. **Store new key**: Update your key management system
+3. **Update applications**: Deploy the new key to your services
+4. **Verify new key works**: Test API calls with the new key
+5. **Delete old key**: Once migration is complete, delete the old key using the DELETE endpoint
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  API key with the specified ID does not exist or does not belong to your organization
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication
+</ResponseField>
